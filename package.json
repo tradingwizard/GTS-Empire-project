@@ -78,7 +78,8 @@
         "ua-parser-js": "^1.0.38",
         "usehooks-ts": "^3.1.0",
         "uuid": "^9.0.1",
-        "yup": "^1.4.0"
+        "yup": "^1.4.0",
+        "@deriv/deriv-api": "^1.0.15"
     },
     "devDependencies": {
         "@babel/core": "^7.24.7",

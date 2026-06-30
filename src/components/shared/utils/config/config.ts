@@ -2,10 +2,8 @@ import { LocalStorageConstants, LocalStorageUtils, URLUtils } from '@deriv-com/u
 import { fetchAccounts, fetchWebSocketUrl, isVirtualAccount } from '@/external/bot-skeleton/services/api/deriv-rest';
 import { isStaging } from '../url/helpers';
 
-export const GTS_APP_ID = process.env.GTS_APP_ID || process.env.DERIV_APP_ID || '33bwKJisse4x97RR0zpa0';
+export const GTS_APP_ID = process.env.GTS_APP_ID || '33bwKJisse4x97RR0zpa0';
 
-// GTS Empire uses one official Deriv OAuth App ID across environments.
-// The previous Deriv DBot production IDs were removed to avoid wrong app attribution.
 export const APP_IDS = {
     LOCALHOST: GTS_APP_ID,
     TMP_STAGING: GTS_APP_ID,
@@ -26,8 +24,8 @@ export const livechat_client_id = '66aa088aad5a414484c1fd1fa8a5ace7';
 // production gtstrader.app values, so an unset env var is still safe.
 export const DERIV_AUTH_URL = process.env.DERIV_AUTH_URL || 'https://auth.deriv.com/oauth2/auth';
 export const DERIV_API_REST_BASE = process.env.DERIV_API_REST_BASE || 'https://api.derivws.com';
-export const DERIV_WS_BASE = process.env.DERIV_WS_BASE || 'wss://api.derivws.com/trading/v1/options/ws';
 export const DERIV_OAUTH_SCOPE = process.env.DERIV_OAUTH_SCOPE || 'trade account_manage';
+export const DERIV_WS_APP_ID = process.env.DERIV_WS_APP_ID || process.env.DERIV_APP_ID || GTS_APP_ID;
 const DERIV_AFFILIATE_ID = process.env.DERIV_AFFILIATE_ID || '11789';
 const safeParse = <T,>(value: string | null, fallback: T): T => {
     try {
@@ -46,6 +44,8 @@ export const DERIV_AFFILIATE = {
 };
 
 export const domain_app_ids = {
+    'gtstrader.app': GTS_APP_ID,
+    'www.gtstrader.app': GTS_APP_ID,
     'master.bot-standalone.pages.dev': APP_IDS.TMP_STAGING,
     'staging-dbot.deriv.com': APP_IDS.STAGING,
     'staging-dbot.deriv.be': APP_IDS.STAGING_BE,
@@ -74,14 +74,14 @@ export const isTestLink = () => {
 
 export const isLocal = () => /localhost(:\d+)?$/i.test(window.location.hostname);
 
-const getLegacyWebSocketURL = (server_url = 'ws.derivws.com') => {
+const getDerivWebSocketURL = (server_url = 'ws.derivws.com') => {
     if (/^wss?:\/\//i.test(server_url)) return server_url;
-    return `wss://${server_url}/websockets/v3?app_id=${GTS_APP_ID}`;
+    return `wss://${server_url}/websockets/v3?app_id=${DERIV_WS_APP_ID}`;
 };
 
 const getDefaultServerURL = () => {
     if (isTestLink()) {
-        return getLegacyWebSocketURL('ws.derivws.com');
+        return getDerivWebSocketURL('ws.derivws.com');
     }
 
     let active_loginid_from_url;
@@ -95,7 +95,7 @@ const getDefaultServerURL = () => {
     const is_real = loginid && !/^(VRT|VRW)/.test(loginid);
 
     const server = is_real ? 'green' : 'blue';
-    const server_url = getLegacyWebSocketURL(`${server}.derivws.com`);
+    const server_url = getDerivWebSocketURL(`${server}.derivws.com`);
 
     return server_url;
 };
@@ -108,7 +108,7 @@ export const getDefaultAppIdAndUrl = () => {
     }
 
     const current_domain = getCurrentProductionDomain() ?? '';
-    const app_id = domain_app_ids[current_domain as keyof typeof domain_app_ids] ?? APP_IDS.PRODUCTION;
+    const app_id = domain_app_ids[current_domain as keyof typeof domain_app_ids] ?? GTS_APP_ID;
 
     return { app_id, server_url };
 };
@@ -125,7 +125,7 @@ export const getAppId = () => {
     } else if (isTestLink()) {
         app_id = APP_IDS.LOCALHOST;
     } else {
-        app_id = domain_app_ids[current_domain as keyof typeof domain_app_ids] ?? APP_IDS.PRODUCTION;
+        app_id = domain_app_ids[current_domain as keyof typeof domain_app_ids] ?? GTS_APP_ID;
     }
 
     return app_id;
@@ -133,7 +133,7 @@ export const getAppId = () => {
 
 export const getSocketURL = async () => {
     const local_storage_server_url = window.localStorage.getItem('config.server_url');
-    if (local_storage_server_url) return getLegacyWebSocketURL(local_storage_server_url);
+    if (local_storage_server_url) return getDerivWebSocketURL(local_storage_server_url);
 
     const token = window.localStorage.getItem('authToken');
     if (!token) return getDefaultServerURL();
@@ -198,7 +198,7 @@ export const checkAndSetEndpointFromUrl = () => {
             url_params.delete('qa_server');
             url_params.delete('app_id');
 
-            if (/^(^(www\.)?qa[0-9]{1,4}\.deriv.dev|(.*)\.derivws\.com)$/.test(qa_server) && /^[0-9]+$/.test(app_id)) {
+            if (/^(^(www\.)?qa[0-9]{1,4}\.deriv.dev|(.*)\.derivws\.com)$/.test(qa_server) && /^[a-zA-Z0-9]+$/.test(app_id)) {
                 localStorage.setItem('config.app_id', app_id);
                 localStorage.setItem('config.server_url', qa_server.replace(/"/g, ''));
             }

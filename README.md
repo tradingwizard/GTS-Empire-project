@@ -52,11 +52,11 @@ Required values:
 ```text
 GTS_APP_ID=33bwKJisse4x97RR0zpa0
 DERIV_APP_ID=33bwKJisse4x97RR0zpa0
+DERIV_WS_APP_ID=33bwKJisse4x97RR0zpa0
 DERIV_AUTH_URL=https://auth.deriv.com/oauth2/auth
 DERIV_AUTH_BASE=https://auth.deriv.com
 DERIV_API_REST_BASE=https://api.derivws.com
 DERIV_API_BASE=https://api.derivws.com
-DERIV_WS_BASE=wss://api.derivws.com/trading/v1/options/ws
 DERIV_OAUTH_SCOPE=trade account_manage
 ```
 

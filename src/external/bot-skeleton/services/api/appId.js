@@ -1,7 +1,10 @@
-import DerivWsAdapter from './deriv-ws-adapter';
+import { getSocketURL } from '@/components/shared';
+import DerivAPIBasic from '@deriv/deriv-api/dist/DerivAPIBasic';
+import APIMiddleware from './api-middleware';
 
 let derivApiInstance = null;
 let derivApiPromise = null;
+let currentWebSocketBaseURL = null;
 
 const buildForgetResponse = request => {
     const msg_type = request?.forget_all != null ? 'forget_all' : 'forget';
@@ -10,23 +13,6 @@ const buildForgetResponse = request => {
         echo_req: request,
         msg_type,
     };
-};
-
-const closeApiInstance = api => {
-    if (!api) return;
-
-    try {
-        if (typeof api.disconnect === 'function') {
-            api.disconnect();
-            return;
-        }
-
-        if (typeof api.connection?.close === 'function') {
-            api.connection.close();
-        }
-    } catch {
-        /* noop */
-    }
 };
 
 const installCleanupCompatibility = api => {
@@ -73,28 +59,72 @@ const installCleanupCompatibility = api => {
 };
 
 export const clearDerivApiInstance = () => {
-    closeApiInstance(derivApiInstance);
+    if (derivApiInstance?.connection) {
+        try {
+            derivApiInstance.connection.close();
+        } catch {
+            /* noop */
+        }
+    }
     derivApiInstance = null;
     derivApiPromise = null;
+    currentWebSocketBaseURL = null;
 };
 
 export const generateDerivApiInstance = async (forceNew = false) => {
     if (forceNew) clearDerivApiInstance();
 
     const state = derivApiInstance?.connection?.readyState;
-    if (state === WebSocket.OPEN || state === WebSocket.CONNECTING) return derivApiInstance;
+    if (state === WebSocket.OPEN) return derivApiInstance;
+    if (state === WebSocket.CONNECTING && derivApiPromise) return derivApiPromise;
     if (state === WebSocket.CLOSING || state === WebSocket.CLOSED) clearDerivApiInstance();
     if (derivApiPromise) return derivApiPromise;
 
-    derivApiPromise = Promise.resolve()
-        .then(() => {
-            const api = installCleanupCompatibility(new DerivWsAdapter());
-            derivApiInstance = api;
-            return api;
-        })
-        .finally(() => {
-            derivApiPromise = null;
+    derivApiPromise = (async () => {
+        const wsURL = await getSocketURL();
+        const nextBaseURL = `${wsURL}`.split('?')[0];
+
+        if (currentWebSocketBaseURL && currentWebSocketBaseURL !== nextBaseURL) {
+            clearDerivApiInstance();
+            return generateDerivApiInstance(true);
+        }
+
+        currentWebSocketBaseURL = nextBaseURL;
+        const socket = new WebSocket(wsURL);
+        const api = new DerivAPIBasic({
+            connection: socket,
+            middleware: new APIMiddleware({}),
         });
+
+        derivApiInstance = installCleanupCompatibility(api);
+
+        return new Promise((resolve, reject) => {
+            const cleanup = () => {
+                clearTimeout(timeout);
+                socket.removeEventListener('open', handleOpen);
+                socket.removeEventListener('error', handleError);
+            };
+            const handleOpen = () => {
+                cleanup();
+                resolve(api);
+            };
+            const handleError = event => {
+                cleanup();
+                clearDerivApiInstance();
+                reject(event);
+            };
+            const timeout = setTimeout(() => {
+                cleanup();
+                clearDerivApiInstance();
+                reject(new Error('Deriv WebSocket connection timeout'));
+            }, 15000);
+
+            socket.addEventListener('open', handleOpen);
+            socket.addEventListener('error', handleError);
+        });
+    })().finally(() => {
+        derivApiPromise = null;
+    });
 
     return derivApiPromise;
 };
@@ -139,7 +169,7 @@ export const getLegacyAuthorizeToken = () => {
     return isLegacyAuthorizeToken(token) ? token : null;
 };
 
-export const V2GetActiveToken = () => getOAuthAccessToken() ?? getLegacyAuthorizeToken();
+export const V2GetActiveToken = () => getLegacyAuthorizeToken();
 
 export const V2GetActiveClientId = () => {
     return getLoginId();
@@ -147,7 +177,7 @@ export const V2GetActiveClientId = () => {
 
 export const getToken = () => {
     return {
-        token: V2GetActiveToken() ?? undefined,
+        token: getLegacyAuthorizeToken() ?? undefined,
         account_id: getLoginId() ?? undefined,
     };
 };
