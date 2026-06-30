@@ -254,7 +254,10 @@ class ConnectionFacade {
 export class DerivWsAdapter {
     connection: ConnectionFacade;
     private ws: WebSocket | null = null;
+    private public_ws: WebSocket | null = null;
+    private public_connect_promise: Promise<void> | null = null;
     private connect_seq = 0;
+    private public_connect_seq = 0;
     private req_id = 1;
     private pending = new Map<number, TPending>();
     private message_subscribers = new Set<TMessageCallback>();
@@ -265,16 +268,110 @@ export class DerivWsAdapter {
     private active_symbol_meta = new Map<string, { market?: string; submarket?: string; symbol?: string }>();
 
     constructor() {
-        this.connection = new ConnectionFacade(() => this.ws);
-        // Connect to the public endpoint so logged-out users get market data.
+        this.connection = new ConnectionFacade(() => this.ws ?? this.public_ws);
+        // Connect to the public endpoint so logged-out/logged-in users get
+        // market data. New Deriv Options separates public market data from the
+        // OTP-authenticated trading socket, so we keep this public socket alive
+        // instead of replacing it when an authenticated socket is opened.
         this.connectPublic();
     }
 
     private connectPublic() {
         const url = `${DERIV_WS_BASE}/public`;
-        this.connect(url).catch(() => {
+        this.ensurePublicConnected(url).catch(() => {
             /* public data optional; ignore */
         });
+    }
+
+    private ensurePublicConnected(url = `${DERIV_WS_BASE}/public`): Promise<void> {
+        if (this.public_ws?.readyState === WebSocket.OPEN) return Promise.resolve();
+        if (this.public_ws?.readyState === WebSocket.CONNECTING && this.public_connect_promise) {
+            return this.public_connect_promise;
+        }
+
+        const seq = ++this.public_connect_seq;
+        this.public_connect_promise = new Promise((resolve, reject) => {
+            let ws: WebSocket;
+            try {
+                ws = new WebSocket(url);
+            } catch (e) {
+                reject(e);
+                return;
+            }
+
+            let opened = false;
+            let settled = false;
+            const settle = (fn: () => void) => {
+                if (settled) return;
+                settled = true;
+                clearTimeout(timeout);
+                fn();
+            };
+
+            const timeout = setTimeout(() => {
+                if (opened) return;
+                try {
+                    ws.close();
+                } catch {
+                    /* noop */
+                }
+                settle(() => reject(new Error('Public WebSocket connection timed out.')));
+            }, 15000);
+
+            ws.addEventListener(
+                'open',
+                () => {
+                    opened = true;
+                    if (seq !== this.public_connect_seq) {
+                        try {
+                            ws.close();
+                        } catch {
+                            /* noop */
+                        }
+                        settle(resolve);
+                        return;
+                    }
+
+                    const previous = this.public_ws;
+                    this.public_ws = ws;
+                    if (previous && previous !== ws) {
+                        try {
+                            previous.close();
+                        } catch {
+                            /* noop */
+                        }
+                    }
+                    this.connection.emit('open');
+                    settle(resolve);
+                },
+                { once: true }
+            );
+
+            ws.addEventListener('message', (evt: MessageEvent) => {
+                if (ws !== this.public_ws) return;
+                this.handleMessage(evt.data);
+            });
+
+            ws.addEventListener('close', () => {
+                if (!opened) {
+                    settle(() => reject(new Error('Public WebSocket closed before opening.')));
+                    return;
+                }
+                if (ws !== this.public_ws) return;
+                this.public_ws = null;
+                if (!this.manually_closed) this.connection.emit('close');
+            });
+
+            ws.addEventListener('error', e => {
+                if (!opened) {
+                    settle(() => reject(e instanceof Error ? e : new Error('Public WebSocket connection error.')));
+                }
+            });
+        }).finally(() => {
+            this.public_connect_promise = null;
+        });
+
+        return this.public_connect_promise;
     }
 
     private connect(url: string): Promise<void> {
@@ -402,6 +499,13 @@ export class DerivWsAdapter {
             if (this.ws && this.ws.readyState === WebSocket.OPEN) {
                 this.sendRaw({ ping: 1 });
             }
+            if (this.public_ws && this.public_ws.readyState === WebSocket.OPEN) {
+                try {
+                    this.public_ws.send(JSON.stringify({ ping: 1 }));
+                } catch {
+                    /* noop */
+                }
+            }
         }, 30000);
     }
 
@@ -416,6 +520,28 @@ export class DerivWsAdapter {
         } catch {
             /* noop */
         }
+    }
+
+    private isPublicDataRequest(request: Record<string, any>): boolean {
+        const cmd = this.commandKey(request);
+        return [
+            'active_symbols',
+            'contracts_for',
+            'contracts_list',
+            'ticks',
+            'ticks_history',
+            'trading_times',
+            'time',
+        ].includes(cmd);
+    }
+
+    private rejectPending(req_id: number, request: Record<string, any>, message: string, code = 'CallError') {
+        const p = this.pending.get(req_id);
+        if (!p || p.settled) return;
+        p.settled = true;
+        clearTimeout(p.timeout);
+        this.pending.delete(req_id);
+        p.reject(this.buildErrorResponse({ error: { code, message } }, request));
     }
 
     private flushQueue() {
@@ -677,6 +803,7 @@ export class DerivWsAdapter {
         const translated = this.translateRequest(request);
         translated.req_id = req_id;
         const is_subscribe = translated.subscribe === 1;
+        const use_public_socket = this.isPublicDataRequest(translated);
 
         const promise = new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
@@ -707,22 +834,29 @@ export class DerivWsAdapter {
         });
 
         const raw = JSON.stringify(translated);
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+
+        if (use_public_socket) {
+            this.ensurePublicConnected()
+                .then(() => {
+                    if (!this.public_ws || this.public_ws.readyState !== WebSocket.OPEN) {
+                        this.rejectPending(req_id, request, 'Public WebSocket is not connected.');
+                        return;
+                    }
+
+                    try {
+                        this.public_ws.send(raw);
+                    } catch (e) {
+                        this.rejectPending(req_id, request, (e as Error)?.message || 'Public WebSocket send failed.');
+                    }
+                })
+                .catch(e => {
+                    this.rejectPending(req_id, request, (e as Error)?.message || 'Public WebSocket connection failed.');
+                });
+        } else if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             try {
                 this.ws.send(raw);
             } catch (e) {
-                const p = this.pending.get(req_id);
-                if (p && !p.settled) {
-                    p.settled = true;
-                    clearTimeout(p.timeout);
-                    this.pending.delete(req_id);
-                    p.reject(
-                        this.buildErrorResponse(
-                            { error: { code: 'CallError', message: (e as Error)?.message || 'Send failed.' } },
-                            request
-                        )
-                    );
-                }
+                this.rejectPending(req_id, request, (e as Error)?.message || 'Send failed.');
             }
         } else {
             this.queue.push(raw);
@@ -903,7 +1037,13 @@ export class DerivWsAdapter {
         } catch {
             /* noop */
         }
+        try {
+            this.public_ws?.close();
+        } catch {
+            /* noop */
+        }
         this.ws = null;
+        this.public_ws = null;
     }
 }
 

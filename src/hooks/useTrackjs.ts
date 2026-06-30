@@ -12,12 +12,18 @@ const useTrackjs = () => {
 
     const initTrackJS = (loginid: string) => {
         try {
+            // TrackJS is optional. The cleaned GTS Empire build does not ship
+            // with a TrackJS token, so do not install it unless a real token is
+            // provided. This removes the noisy "TrackJS: missing token" console
+            // warning without affecting Deriv/API functionality.
+            if (!isProduction || !TRACKJS_TOKEN) return;
+
             if (!TrackJS.isInstalled()) {
                 TrackJS.install({
-                    application: 'standalone-deriv-bot',
+                    application: 'gts-empire',
                     dedupe: false,
-                    enabled: isProduction,
-                    token: TRACKJS_TOKEN!,
+                    enabled: true,
+                    token: TRACKJS_TOKEN,
                     userId: loginid,
                     version:
                         (document.querySelector('meta[name=version]') as HTMLMetaElement)?.content ?? trackjs_version,
