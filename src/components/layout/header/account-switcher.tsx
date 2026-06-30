@@ -104,9 +104,7 @@ const AccountSwitcher = observer(({ activeAccount }: TAccountSwitcher) => {
                         getDecimalPlaces(account.currency)
                     ) ?? '0'
                 ),
-                currencyLabel: account?.is_virtual
-                    ? tabs_labels.demo
-                    : (client.website_status?.currencies_config?.[account?.currency]?.name ?? account?.currency),
+                currencyLabel: account?.is_virtual ? localize('Demo account') : localize('Real account'),
                 icon: (
                     <CurrencyIcon
                         currency={account?.currency?.toLowerCase()}

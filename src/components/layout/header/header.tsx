@@ -13,16 +13,12 @@ import useTMB from '@/hooks/useTMB';
 import { clearAuthData } from '@/utils/auth-utils';
 import { debugAuth } from '@/utils/auth-debug';
 import { redirectToLogin } from '@/utils/pkce';
-import { StandaloneCircleUserRegularIcon } from '@deriv/quill-icons/Standalone';
 import { Localize, useTranslations } from '@deriv-com/translations';
 import { Header, useDevice, Wrapper } from '@deriv-com/ui';
-import { Tooltip } from '@deriv-com/ui';
 import { AppLogo } from '../app-logo';
 import AccountsInfoLoader from './account-info-loader';
 import AccountSwitcher from './account-switcher';
-import MenuItems from './menu-items';
 import MobileMenu from './mobile-menu';
-import PlatformSwitcher from './platform-switcher';
 import './header.scss';
 
 type TAppHeaderProps = {
@@ -60,6 +56,8 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
             return (
                 <>
                     {/* <CustomNotifications /> */}
+
+                    <AccountSwitcher activeAccount={activeAccount} />
 
                     {isDesktop &&
                         (has_wallet ? (
@@ -99,42 +97,6 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
                                 {localize('Deposit')}
                             </Button>
                         ))}
-
-                    <AccountSwitcher activeAccount={activeAccount} />
-
-                    {isDesktop &&
-                        (() => {
-                            let redirect_url = new URL(standalone_routes.personal_details);
-                            const is_hub_enabled_country = hubEnabledCountryList.includes(client?.residence || '');
-
-                            if (has_wallet && is_hub_enabled_country) {
-                                redirect_url = new URL(standalone_routes.account_settings);
-                            }
-                            // Check if the account is a demo account
-                            // Use the URL parameter to determine if it's a demo account, as this will update when the account changes
-                            const urlParams = new URLSearchParams(window.location.search);
-                            const account_param = urlParams.get('account');
-                            const is_virtual = client?.is_virtual || account_param === 'demo';
-
-                            if (is_virtual) {
-                                // For demo accounts, set the account parameter to 'demo'
-                                redirect_url.searchParams.set('account', 'demo');
-                            } else if (currency) {
-                                // For real accounts, set the account parameter to the currency
-                                redirect_url.searchParams.set('account', currency);
-                            }
-                            return (
-                                <Tooltip
-                                    as='a'
-                                    href={redirect_url.toString()}
-                                    tooltipContent={localize('Manage account settings')}
-                                    tooltipPosition='bottom'
-                                    className='app-header__account-settings'
-                                >
-                                    <StandaloneCircleUserRegularIcon className='app-header__profile_icon' />
-                                </Tooltip>
-                            );
-                        })()}
                 </>
             );
         } else {
@@ -207,8 +169,6 @@ const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
             <Wrapper variant='left'>
                 <AppLogo />
                 <MobileMenu />
-                {isDesktop && <MenuItems />}
-                {isDesktop && <PlatformSwitcher />}
             </Wrapper>
             <Wrapper variant='right'>
                 {!isDesktop && <PWAInstallButton variant='primary' size='medium' />}

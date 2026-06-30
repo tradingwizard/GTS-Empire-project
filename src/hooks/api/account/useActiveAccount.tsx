@@ -23,7 +23,7 @@ const useActiveAccount = ({ allBalanceData }: { allBalanceData: Balance | null }
                   balance:
                       addComma(currentBalanceData?.balance?.toFixed(getDecimalPlaces(currentBalanceData.currency))) ??
                       '0',
-                  currencyLabel: activeAccount?.is_virtual ? localize('Demo') : activeAccount?.currency,
+                  currencyLabel: activeAccount?.is_virtual ? localize('Demo account') : localize('Real account'),
                   icon: (
                       <CurrencyIcon
                           currency={activeAccount?.currency?.toLowerCase()}
