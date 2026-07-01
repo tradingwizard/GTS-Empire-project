@@ -1,8 +1,14 @@
-import { defineConfig } from '@rsbuild/core';
+import { defineConfig, loadEnv } from '@rsbuild/core';
 import { pluginReact } from '@rsbuild/plugin-react';
 import { pluginSass } from '@rsbuild/plugin-sass';
 
 const path = require('path');
+
+loadEnv({ mode: 'production' });
+const smartchartsDist = path.join(
+    path.dirname(require.resolve('@deriv-com/smartcharts-champion/package.json')),
+    'dist'
+);
 
 export default defineConfig({
     plugins: [
@@ -24,6 +30,11 @@ export default defineConfig({
         },
         define: {
             'process.env': {
+                NEXT_PUBLIC_DERIV_APP_ID: JSON.stringify(process.env.NEXT_PUBLIC_DERIV_APP_ID ?? process.env.GTS_APP_ID ?? process.env.DERIV_APP_ID ?? '33bwKJisse4x97RR0zpa0'),
+                NEXT_PUBLIC_DERIV_APP_NAME: JSON.stringify(process.env.NEXT_PUBLIC_DERIV_APP_NAME ?? 'GTS Empire'),
+                NEXT_PUBLIC_DERIV_ENV: JSON.stringify(process.env.NEXT_PUBLIC_DERIV_ENV ?? 'production'),
+                NEXT_PUBLIC_DERIV_REFERRAL_LINK: JSON.stringify(process.env.NEXT_PUBLIC_DERIV_REFERRAL_LINK ?? ''),
+                NEXT_PUBLIC_APP_BUILD: JSON.stringify(process.env.NEXT_PUBLIC_APP_BUILD ?? ''),
                 TRANSLATIONS_CDN_URL: JSON.stringify(process.env.TRANSLATIONS_CDN_URL),
                 R2_PROJECT_NAME: JSON.stringify(process.env.R2_PROJECT_NAME),
                 CROWDIN_BRANCH_NAME: JSON.stringify(process.env.CROWDIN_BRANCH_NAME),
@@ -53,6 +64,7 @@ export default defineConfig({
             },
         },
         alias: {
+            '@': path.resolve(__dirname, './src'),
             react: path.resolve('./node_modules/react'),
             'react-dom': path.resolve('./node_modules/react-dom'),
             '@/external': path.resolve(__dirname, './src/external'),
@@ -66,15 +78,15 @@ export default defineConfig({
     output: {
         copy: [
             {
-                from: 'node_modules/@deriv/deriv-charts/dist/*',
+                from: path.join(smartchartsDist, '*'),
                 to: 'js/smartcharts/[name][ext]',
-                globOptions: {
-                    ignore: ['**/*.LICENSE.txt'],
-                },
+                globOptions: { ignore: ['**/*.LICENSE.txt'] },
             },
-            { from: 'node_modules/@deriv/deriv-charts/dist/chart/assets/*', to: 'assets/[name][ext]' },
-            { from: 'node_modules/@deriv/deriv-charts/dist/chart/assets/fonts/*', to: 'assets/fonts/[name][ext]' },
-            { from: 'node_modules/@deriv/deriv-charts/dist/chart/assets/shaders/*', to: 'assets/shaders/[name][ext]' },
+            { from: path.join(smartchartsDist, 'chart'), to: 'js/smartcharts/chart' },
+            { from: path.join(smartchartsDist, 'assets'), to: 'js/smartcharts/assets' },
+            { from: path.join(smartchartsDist, 'assets/*'), to: 'assets/[name][ext]' },
+            { from: path.join(smartchartsDist, 'assets/fonts/*'), to: 'assets/fonts/[name][ext]' },
+            { from: path.join(smartchartsDist, 'assets/shaders/*'), to: 'assets/shaders/[name][ext]' },
             { from: path.join(__dirname, 'public') },
         ],
         // Ensure service worker is not cached by the browser

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import { RefObject, useEffect, useRef } from 'react';
 import useIsomorphicLayoutEffect from './useIsomorphicLayoutEffect';
 

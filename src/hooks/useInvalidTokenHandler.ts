@@ -1,25 +1,47 @@
 import { useEffect } from 'react';
+import { clearAuthInfo } from '@/external/deriv-core';
 import { observer as globalObserver } from '@/external/bot-skeleton/utils/observer';
-import { debugAuth } from '@/utils/auth-debug';
-import { useOauth2 } from './auth/useOauth2';
+import { ErrorLogger } from '@/utils/error-logger';
 
 /**
- * Hook to handle invalid token events by retriggering OIDC authentication
+ * Hook to handle invalid token events by clearing auth data and redirecting to OAuth login
  *
  * This hook listens for 'InvalidToken' events emitted by the API base when
- * a token is invalid but the cookie logged state is true. When such an event
- * is detected, it automatically retriggers the OIDC authentication flow to
- * get a new token.
+ * a token is invalid. When such an event is detected, it clears the invalid
+ * authentication data and redirects to OAuth login to prevent infinite reload loops.
  *
  * @returns {{ unregisterHandler: () => void }} An object containing a function to unregister the event handler
  */
 export const useInvalidTokenHandler = (): { unregisterHandler: () => void } => {
-    const { retriggerOAuth2Login } = useOauth2();
+    const handleInvalidToken = async () => {
+        try {
+            // Clear invalid auth token via vendored deriv-core
+            clearAuthInfo();
+            localStorage.removeItem('active_loginid');
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('accountsList');
+            localStorage.removeItem('clientAccounts');
 
-    const handleInvalidToken = () => {
-        // Clear localStorage similar to client.logout
-        debugAuth('invalid-token-handler.redirect-to-login', { source: 'useInvalidTokenHandler' });
-        retriggerOAuth2Login();
+            // Clear sessionStorage completely to remove any stale auth data
+            sessionStorage.clear();
+
+            // Redirect to OAuth login instead of reload to get fresh authentication
+            const { generateOAuthURL } = await import('@/components/shared');
+            const oauthUrl = await generateOAuthURL();
+
+            if (oauthUrl) {
+                // Use replace to prevent back button from returning to invalid state
+                window.location.replace(oauthUrl);
+            } else {
+                // Fallback: reload if OAuth URL generation fails
+                ErrorLogger.error('InvalidToken', 'Failed to generate OAuth URL, falling back to reload');
+                window.location.reload();
+            }
+        } catch (error) {
+            ErrorLogger.error('InvalidToken', 'Error handling invalid token', error);
+            // Last resort: reload the page
+            window.location.reload();
+        }
     };
 
     // Subscribe to the InvalidToken event
@@ -30,7 +52,7 @@ export const useInvalidTokenHandler = (): { unregisterHandler: () => void } => {
         return () => {
             globalObserver.unregister('InvalidToken', handleInvalidToken);
         };
-    }, [retriggerOAuth2Login]);
+    }, []);
 
     // Return a function to unregister the handler manually if needed
     return {

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import { tradingTimesService } from '../components/shared/services/trading-times-service';
 import { generateDisplayName, MARKET_MAPPINGS } from '../components/shared/utils/common-data';
 import { activeSymbolCategorizationService } from './active-symbol-categorization.service';

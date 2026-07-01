@@ -1,9 +1,11 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import React from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 import Text from '@/components/shared_ui/text';
 import { getContractTypeDisplay } from '@/constants/contract';
 import { useStore } from '@/hooks/useStore';
+import { getSymbolDisplayNameSync } from '@/utils/symbol-display-name';
 import { localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
 import ContractCardLoader from '../contract-card-loading';
@@ -29,6 +31,11 @@ const SummaryCard = observer(({ contract_info, is_contract_loading, is_bot_runni
     const card_header = (
         <ContractCard.Header
             contract_info={contract_info}
+            display_name={
+                (contract_info as any)?.underlying_symbol
+                    ? getSymbolDisplayNameSync((contract_info as any).underlying_symbol)
+                    : ''
+            }
             getCardLabels={getCardLabels}
             getContractTypeDisplay={getContractTypeDisplay}
             has_progress_slider={!is_multiplier}

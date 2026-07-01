@@ -48,6 +48,11 @@ const updateBrandColorsInThemes = () => {
         brandColorLines.push(`    --brand-font-monospace: ${typography.font_family.monospace};`);
     }
 
+    // Closing marker so subsequent runs replace this block deterministically
+    // (the replacement logic below keys off this exact marker) rather than
+    // appending a stale duplicate block.
+    brandColorLines.push('    /* [/AI] */');
+
     // Find and replace the brand colors section
     let insertionPoint = -1;
     let endPoint = -1;
@@ -104,7 +109,10 @@ const updateBrandColorsInThemes = () => {
     const afterSection =
         endPoint > insertionPoint ? themesContent.substring(endPoint) : themesContent.substring(insertionPoint);
 
-    themesContent = beforeSection + '\n\n' + brandColorLines.join('\n') + '\n' + afterSection;
+    // Collapse any trailing blank lines before the block so repeated runs (this now
+    // runs on every `prebuild`) stay idempotent — the brand block is always preceded
+    // by exactly one blank line rather than accumulating more on each invocation.
+    themesContent = beforeSection.replace(/\n+$/, '\n') + '\n' + brandColorLines.join('\n') + '\n' + afterSection;
 
     // Write the updated file
     fs.writeFileSync(themesPath, themesContent, 'utf8');

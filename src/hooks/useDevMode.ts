@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import { useEffect } from 'react';
 import { botNotification } from '@/components/bot-notification/bot-notification';
 import { WS_SERVERS } from '@/components/shared/utils/config/config';

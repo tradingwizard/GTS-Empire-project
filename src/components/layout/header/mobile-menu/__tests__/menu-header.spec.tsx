@@ -23,16 +23,18 @@ describe('MenuHeader component', () => {
         });
     });
 
-    it('renders "Menu" with "lg" text size in mobile view', () => {
+    // [AI] Header shows a plain "Settings" title instead of the logo + app name mark
+    it('renders the Settings title in mobile view', () => {
         render(<MenuHeader hideLanguageSetting={false} openLanguageSetting={mockOpenLanguageSetting} />);
-        expect(screen.getByText('Menu')).toHaveClass('derivs-text__size--lg');
+        expect(screen.getByText('Settings')).toBeInTheDocument();
     });
 
-    it('renders "Menu" with "md" text size in desktop view', () => {
+    it('renders the Settings title in desktop view', () => {
         (useDevice as jest.Mock).mockReturnValue({ isDesktop: true });
         render(<MenuHeader hideLanguageSetting={false} openLanguageSetting={mockOpenLanguageSetting} />);
-        expect(screen.getByText('Menu')).toHaveClass('derivs-text__size--md');
+        expect(screen.getByText('Settings')).toBeInTheDocument();
     });
+    // [/AI]
 
     it('does not render language setting button when hideLanguageSetting is true', () => {
         render(<MenuHeader hideLanguageSetting openLanguageSetting={mockOpenLanguageSetting} />);

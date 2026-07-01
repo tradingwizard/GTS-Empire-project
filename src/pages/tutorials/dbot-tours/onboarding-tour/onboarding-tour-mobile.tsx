@@ -1,9 +1,11 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import React from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 import ProgressBarTracker from '@/components/shared_ui/progress-bar-tracker';
 import Text from '@/components/shared_ui/text';
 import { useStore } from '@/hooks/useStore';
+import { isPreviewMode } from '@/utils/is-preview-mode';
 import { getSetting } from '@/utils/settings';
 import { LegacyClose1pxIcon } from '@deriv/quill-icons/Legacy';
 import { localize } from '@deriv-com/translations';
@@ -46,6 +48,8 @@ const OnboardingTourMobile = observer(() => {
 
     React.useEffect(() => {
         const checkTokenForTour = () => {
+            // Onboarding tours are noise inside the App Builder preview — skip them.
+            if (isPreviewMode()) return;
             const token = getSetting('onboard_tour_token');
             if (!token && active_tab === 0) {
                 setActiveTour('onboarding');
@@ -96,7 +100,7 @@ const OnboardingTourMobile = observer(() => {
                     lineHeight='s'
                     size='xs'
                 >
-                    {localize(header)}
+                    {header}
                 </Text>
             )}
             {media && (

@@ -1,5 +1,5 @@
 import { isProduction } from '@/components/shared';
-import brandConfig from '@/../brand.config.json';
+import brandConfig from '../../brand.config.json';
 
 /**
  * Account information from derivatives/accounts endpoint
@@ -195,13 +195,10 @@ export class DerivWSAccountsService {
                 const optionsDir = brandConfig.platform.derivws.directories.options;
                 const endpoint = `${baseURL}${optionsDir}accounts/${accountId}/otp`;
 
-                const appId = process.env.APP_ID || brandConfig.platform.app_id || '33bwKJisse4x97RR0zpa0';
-
                 const response = await fetch(endpoint, {
                     method: 'POST',
                     headers: {
                         Authorization: `Bearer ${accessToken}`,
-                        'Deriv-App-ID': appId,
                     },
                 });
 
@@ -268,7 +265,8 @@ export class DerivWSAccountsService {
             // localStorage before triggering a WebSocket regeneration, so we honour
             // that selection here instead of always falling back to accounts[0].
             const activeLoginId = localStorage.getItem('active_loginid');
-            const targetAccount = (activeLoginId && accounts.find(a => a.account_id === activeLoginId)) || accounts[0];
+            const targetAccount =
+                (activeLoginId && accounts.find(a => a.account_id === activeLoginId)) || accounts[0];
 
             // Step 4: Fetch OTP and WebSocket URL for the resolved account (always fresh OTP)
             const websocketURL = await this.fetchOTPWebSocketURL(accessToken, targetAccount.account_id);

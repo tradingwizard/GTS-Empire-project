@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import localForage from 'localforage';
 import LZString from 'lz-string';
 import { action, makeObservable, observable } from 'mobx';

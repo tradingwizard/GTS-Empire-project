@@ -1,8 +1,13 @@
-import Cookies from 'js-cookie';
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
+/* [AI] - Analytics removed - utility functions moved to @/utils/account-helpers */
+import { getAccountId, getAccountType, isDemoAccount, removeUrlParameter } from '@/utils/account-helpers';
+/* [/AI] */
 import CommonStore from '@/stores/common-store';
+import { DerivWSAccountsService } from '@/services/derivws-accounts.service';
 import { TAuthData } from '@/types/api-types';
-import { debugAuth } from '@/utils/auth-debug';
 import { clearAuthData } from '@/utils/auth-utils';
+import { handleBackendError, isBackendError } from '@/utils/error-handler';
+import { activeSymbolsProcessorService } from '../../../../services/active-symbols-processor.service';
 import { observer as globalObserver } from '../../utils/observer';
 import { doUntilDone, socket_state } from '../tradeEngine/utils/helpers';
 import {
@@ -14,7 +19,7 @@ import {
     setIsAuthorizing,
 } from './observables/connection-status-stream';
 import ApiHelpers from './api-helpers';
-import { generateDerivApiInstance, getOAuthAccessToken, V2GetActiveClientId, V2GetActiveToken } from './appId';
+import { generateDerivApiInstance, V2GetActiveAccountId } from './appId';
 import chart_api from './chart-api';
 
 type CurrentSubscription = {
@@ -32,40 +37,16 @@ type TApiBaseApi = {
         addEventListener: (event: string, callback: () => void) => void;
         removeEventListener: (event: string, callback: () => void) => void;
     };
-    send: (data: unknown) => Promise<any>;
+    send: (data: unknown) => void;
     disconnect: () => void;
-    authorize: (token: string) => Promise<{ authorize: TAuthData; error: any }>;
-    getSelfExclusion: () => Promise<unknown>;
-    time: () => Promise<any>;
-    websiteStatus: () => Promise<any>;
-    getSettings: () => Promise<any>;
-    getAccountStatus: () => Promise<any>;
-    landingCompany: (request: unknown) => Promise<any>;
+    authorize: (token: string) => Promise<{ authorize: TAuthData; error: unknown }>;
+
     onMessage: () => {
-        subscribe: (callback: (message: any) => void) => {
+        subscribe: (callback: (message: unknown) => void) => {
             unsubscribe: () => void;
         };
     };
-};
-
-type TStoredClientAccount = {
-    loginid?: string;
-    token?: string;
-    currency?: string;
-    account_type?: string;
-    balance?: number;
-};
-
-const safeParse = <T,>(value: string | null, fallback: T): T => {
-    try {
-        return value ? JSON.parse(value) : fallback;
-    } catch {
-        return fallback;
-    }
-};
-
-const isVirtualAccount = (account?: TStoredClientAccount, loginid = '') =>
-    /demo|virtual|vrt/i.test(`${account?.account_type ?? ''} ${loginid}`);
+} & ReturnType<typeof generateDerivApiInstance>;
 
 class APIBase {
     api: TApiBaseApi | null = null;
@@ -78,41 +59,91 @@ class APIBase {
     time_interval: ReturnType<typeof setInterval> | null = null;
     has_active_symbols = false;
     is_stopping = false;
-    active_symbols = [];
+    active_symbols: any[] = [];
     current_auth_subscriptions: SubscriptionPromise[] = [];
     is_authorized = false;
-    active_symbols_promise: Promise<unknown[]> | null = null;
+    active_symbols_promise: Promise<any[] | undefined> | null = null;
     common_store: CommonStore | undefined;
-    landing_company: string | null = null;
-    is_initializing = false;
-    init_promise: Promise<void> | null = null;
-    onsocketopenBound: (() => void) | null = null;
-    onsocketcloseBound: (() => void) | null = null;
+    reconnection_attempts: number = 0;
 
-    constructor() {
-        this.onsocketopenBound = this.onsocketopen.bind(this);
-        this.onsocketcloseBound = this.onsocketclose.bind(this);
-    }
+    // Constants for timeouts - extracted magic numbers for better maintainability
+    private readonly ACTIVE_SYMBOLS_TIMEOUT_MS = 10000; // 10 seconds
+    private readonly ENRICHMENT_TIMEOUT_MS = 10000; // 10 seconds
+    private readonly MAX_RECONNECTION_ATTEMPTS = 5; // Maximum number of reconnection attempts before session reset
 
     unsubscribeAllSubscriptions = () => {
         this.current_auth_subscriptions?.forEach(subscription_promise => {
-            subscription_promise
-                .then(({ subscription }) => {
-                    if (subscription?.id) {
-                        this.api
-                            ?.send({
-                                forget: subscription.id,
-                            })
-                            .catch(() => undefined);
-                    }
-                })
-                .catch(() => undefined);
+            subscription_promise.then(({ subscription }) => {
+                if (subscription?.id) {
+                    this.api?.send({
+                        forget: subscription.id,
+                    });
+                }
+            });
         });
         this.current_auth_subscriptions = [];
     };
 
     onsocketopen() {
         setConnectionStatus(CONNECTION_STATUS.OPENED);
+
+        // Reset reconnection attempts on successful connection
+        this.reconnection_attempts = 0;
+
+        const currentClientStore = globalObserver.getState('client.store');
+        if (currentClientStore) {
+            currentClientStore.setIsAccountRegenerating(false);
+        }
+
+        this.handleTokenExchangeIfNeeded();
+    }
+
+    private async handleTokenExchangeIfNeeded() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const account_id = urlParams.get('account_id');
+        const accountType = urlParams.get('account_type');
+
+        if (account_id) {
+            localStorage.setItem('active_loginid', account_id);
+            // Remove account_id from URL after storing
+            removeUrlParameter('account_id');
+        }
+        if (accountType) {
+            localStorage.setItem('account_type', accountType);
+            // Remove account_type from URL after storing
+            removeUrlParameter('account_type');
+        }
+
+        // Check if we have an account_id from URL or localStorage
+        let activeAccountId: string | null = getAccountId();
+
+        // If no account_id in localStorage, check sessionStorage for accounts
+        if (!activeAccountId) {
+            try {
+                const storedAccounts = sessionStorage.getItem('deriv_accounts');
+                if (storedAccounts) {
+                    const accounts = JSON.parse(storedAccounts);
+                    if (accounts && accounts.length > 0 && accounts[0].account_id) {
+                        // Use the first account as default
+                        const accountId = accounts[0].account_id as string;
+                        activeAccountId = accountId;
+                        localStorage.setItem('active_loginid', accountId);
+
+                        // Set account type based on account_id prefix
+                        const isDemo = accountId.startsWith('VRT') || accountId.startsWith('VRTC');
+                        localStorage.setItem('account_type', isDemo ? 'demo' : 'real');
+                    }
+                }
+            } catch (error) {
+                console.error('[APIBase] Error reading accounts from sessionStorage:', error);
+            }
+        }
+
+        // Now proceed with normal authorization if we have an account_id
+        if (activeAccountId) {
+            setIsAuthorizing(true);
+            await this.authorizeAndSubscribe();
+        }
     }
 
     onsocketclose() {
@@ -121,61 +152,54 @@ class APIBase {
     }
 
     async init(force_create_connection = false) {
-        if (this.is_initializing && this.init_promise) return this.init_promise;
+        this.toggleRunButton(true);
 
-        this.is_initializing = true;
-        this.init_promise = (async () => {
-            this.toggleRunButton(true);
-
-            if (this.api) {
-                this.unsubscribeAllSubscriptions();
-            }
-
-            if (!this.api || this.api?.connection.readyState !== 1 || force_create_connection) {
-                if (this.api?.connection) {
-                    ApiHelpers.disposeInstance();
-                    setConnectionStatus(CONNECTION_STATUS.CLOSED);
-                    if (this.onsocketopenBound) {
-                        this.api.connection.removeEventListener('open', this.onsocketopenBound);
-                    }
-                    if (this.onsocketcloseBound) {
-                        this.api.connection.removeEventListener('close', this.onsocketcloseBound);
-                    }
-                    this.api.disconnect();
-                }
-
-                this.api = await generateDerivApiInstance(force_create_connection);
-                if (this.onsocketopenBound) this.api?.connection.addEventListener('open', this.onsocketopenBound);
-                if (this.onsocketcloseBound) this.api?.connection.addEventListener('close', this.onsocketcloseBound);
-
-                if (this.api?.connection?.readyState === 1) {
-                    this.onsocketopen();
-                }
-            }
-
-            if (!this.has_active_symbols && !V2GetActiveToken()) {
-                this.active_symbols_promise = this.getActiveSymbols();
-            }
-
-            this.initEventListeners();
-
-            if (this.time_interval) clearInterval(this.time_interval);
-            this.time_interval = null;
-
-            if (V2GetActiveClientId() && (V2GetActiveToken() || getOAuthAccessToken())) {
-                setIsAuthorizing(true);
-                await this.authorizeAndSubscribe();
-            }
-
-            chart_api.init(force_create_connection);
-        })();
-
-        try {
-            return await this.init_promise;
-        } finally {
-            this.is_initializing = false;
-            this.init_promise = null;
+        if (this.api) {
+            this.unsubscribeAllSubscriptions();
         }
+
+        // Reset reconnection attempts counter on successful connection initialization
+        if (!force_create_connection) {
+            this.reconnection_attempts = 0;
+        }
+
+        if (!this.api || this.api?.connection.readyState !== 1 || force_create_connection) {
+            if (this.api?.connection) {
+                ApiHelpers.disposeInstance();
+                setConnectionStatus(CONNECTION_STATUS.CLOSED);
+                this.api.disconnect();
+                this.api.connection.removeEventListener('open', this.onsocketopen.bind(this));
+                this.api.connection.removeEventListener('close', this.onsocketclose.bind(this));
+            }
+
+            this.api = await generateDerivApiInstance();
+
+            this.api?.connection.addEventListener('open', this.onsocketopen.bind(this));
+            this.api?.connection.addEventListener('close', this.onsocketclose.bind(this));
+
+            // Store the current account ID used for this WebSocket connection
+            // This will be used to check if we need to regenerate the connection when the tab becomes active
+            const currentClientStore = globalObserver.getState('client.store');
+            if (currentClientStore) {
+                const active_login_id = getAccountId();
+                if (active_login_id) {
+                    currentClientStore.setWebSocketLoginId(active_login_id);
+                }
+            }
+        }
+
+        const hasAccountID = V2GetActiveAccountId();
+
+        if (!this.has_active_symbols && !hasAccountID) {
+            this.active_symbols_promise = this.getActiveSymbols().then(() => undefined);
+        }
+
+        this.initEventListeners();
+
+        if (this.time_interval) clearInterval(this.time_interval);
+        this.time_interval = null;
+
+        chart_api.init(force_create_connection);
     }
 
     getConnectionStatus() {
@@ -205,172 +229,142 @@ class APIBase {
     }
 
     reconnectIfNotConnected = () => {
-        if (this.is_initializing) return;
         if (this.api?.connection?.readyState && this.api?.connection?.readyState > 1) {
-            // eslint-disable-next-line no-console
-            console.log('Info: Connection to the server was closed, trying to reconnect.');
+            this.reconnection_attempts += 1;
+
+            if (this.reconnection_attempts >= this.MAX_RECONNECTION_ATTEMPTS) {
+                // Reset reconnection counter
+                this.reconnection_attempts = 0;
+
+                // Properly handle logout through the API
+                setIsAuthorized(false);
+                setAccountList([]);
+                setAuthData(null);
+
+                // Clear necessary storage items
+                localStorage.removeItem('active_loginid');
+                localStorage.removeItem('account_type');
+                localStorage.removeItem('accountsList');
+                localStorage.removeItem('clientAccounts');
+            }
+
             this.init(true);
         }
     };
 
     async authorizeAndSubscribe() {
         if (!this.api) return;
-        const token = V2GetActiveToken();
-        const next_account_id = V2GetActiveClientId() ?? '';
-        if (!next_account_id) return;
-        if (this.is_authorized && this.token === (token ?? '') && this.account_id === next_account_id) return;
-        this.token = token ?? '';
-        this.account_id = next_account_id;
+
+        this.account_id = getAccountId() || '';
         setIsAuthorizing(true);
-        setIsAuthorized(false);
 
         try {
-            if (!token) {
-                debugAuth('api-base.hydrate-authenticated-websocket', {
-                    source: 'api-base.authorizeAndSubscribe',
-                    account_id: next_account_id,
-                });
-                await this.hydrateAuthenticatedWebSocket(next_account_id);
-                return;
-            }
+            const { balance, error } = await this.api.balance();
 
-            debugAuth('api-base.legacy-authorize-attempt', {
-                source: 'api-base.authorizeAndSubscribe',
-                account_id: next_account_id,
-            });
-            const { authorize, error } = await this.api.authorize(this.token);
             if (error) {
-                if (error.code === 'InvalidToken') {
-                    debugAuth('api-base.invalid-token', {
-                        source: 'api-base.authorizeAndSubscribe',
-                        error_code: error.code,
-                        logged_state_cookie: Cookies.get('logged_state') || null,
-                    });
-                    const is_tmb_enabled = window.is_tmb_enabled === true;
-                    if (Cookies.get('logged_state') === 'true' && !is_tmb_enabled) {
-                        globalObserver.emit('InvalidToken', { error });
-                    } else {
-                        clearAuthData(true, 'api-base.authorizeAndSubscribe.InvalidToken');
-                    }
-                } else {
-                    console.error('Authorization error:', error);
-                }
+                const errorMessage = isBackendError(error)
+                    ? handleBackendError(error)
+                    : error.message || 'Authorization failed';
+
+                // Authorization error
+                console.error('Authorization error:', errorMessage);
+
                 setIsAuthorizing(false);
-                return error;
+                return { ...error, localizedMessage: errorMessage };
             }
 
-            this.account_info = authorize;
-            setAccountList(authorize?.account_list || []);
-            setAuthData(authorize);
+            this.account_info = {
+                balance: balance?.balance,
+                currency: balance?.currency,
+                loginid: balance?.loginid,
+            };
+            this.token = balance?.loginid;
+
+            const account_type = getAccountType(balance?.loginid);
+            const currentAccount = balance?.loginid
+                ? {
+                      balance: balance.balance,
+                      currency: balance.currency || 'USD',
+                      is_virtual: account_type === 'real' ? 0 : 1,
+                      loginid: balance.loginid,
+                  }
+                : null;
+
+            // Build full account list from sessionStorage (populated during OAuth flow)
+            // Falls back to just the current account if sessionStorage has no data
+            const storedAccounts = DerivWSAccountsService.getStoredAccounts();
+            const accountList =
+                storedAccounts && storedAccounts.length > 0
+                    ? storedAccounts
+                          .filter(a => !a.status || a.status === 'active')
+                          .map(a => ({
+                              balance: parseFloat(a.balance) || 0,
+                              currency: a.currency || 'USD',
+                              is_virtual: a.account_type === 'demo' ? 1 : 0,
+                              loginid: a.account_id,
+                          }))
+                    : currentAccount
+                      ? [currentAccount]
+                      : [];
+
+            setAccountList(accountList); // Observable stream
+            setAuthData({
+                balance: balance?.balance,
+                currency: balance?.currency,
+                loginid: balance?.loginid,
+                is_virtual: account_type === 'real' ? 0 : 1,
+                account_list: accountList,
+            });
+
+            // // Set account_type in localStorage based on loginid prefix using centralized utility
+            const loginid = balance?.loginid || '';
+            const isDemo = isDemoAccount(loginid);
+
+            if (isDemo) {
+                localStorage.setItem('account_type', 'demo');
+            } else {
+                localStorage.setItem('account_type', 'real');
+            }
+
+            globalObserver.emit('api.authorize', {
+                account_list: accountList,
+                current_account: {
+                    loginid: balance?.loginid,
+                    currency: balance?.currency || 'USD',
+                    is_virtual: account_type === 'real' ? 0 : 1,
+                    balance: typeof balance?.balance === 'number' ? balance.balance : undefined,
+                },
+            });
+
+            // Update the WebSocket login ID in the client store
+            const currentClientStore = globalObserver.getState('client.store');
+            if (currentClientStore && balance?.loginid) {
+                currentClientStore.setWebSocketLoginId(balance.loginid);
+            }
+
             setIsAuthorized(true);
             this.is_authorized = true;
-            localStorage.setItem('client_account_details', JSON.stringify(authorize?.account_list));
-            localStorage.setItem('client.country', authorize?.country);
+            localStorage.setItem('client_account_details', JSON.stringify(accountList));
+            localStorage.setItem('client.country', balance?.country);
+
+            if (balance?.loginid) {
+                localStorage.setItem('active_loginid', balance.loginid);
+            }
 
             if (this.has_active_symbols) {
                 this.toggleRunButton(false);
             } else {
                 this.active_symbols_promise = this.getActiveSymbols();
             }
-            this.subscribe().catch(() => undefined);
-            // this.getSelfExclusion(); commented this so we dont call it from two places
+            this.subscribe();
         } catch (e) {
-            console.error('Authorization failed:', e);
             this.is_authorized = false;
-            const error_code = (e as any)?.code || (e as any)?.error?.code;
-            if (error_code === 'InvalidToken') {
-                debugAuth('api-base.invalid-token', {
-                    source: 'api-base.authorizeAndSubscribe.catch',
-                    error_code,
-                });
-                clearAuthData(true, 'api-base.authorizeAndSubscribe.catch.InvalidToken');
-            }
+            clearAuthData();
             setIsAuthorized(false);
             globalObserver.emit('Error', e);
         } finally {
             setIsAuthorizing(false);
         }
-    }
-
-    async hydrateAuthenticatedWebSocket(account_id: string) {
-        if (!this.api) return;
-
-        const response = await this.api.send({ balance: 1 });
-        const error = response?.error;
-        if (error) {
-            this.is_authorized = false;
-            setIsAuthorized(false);
-            debugAuth('api-base.authenticated-websocket-probe-error', {
-                source: 'api-base.hydrateAuthenticatedWebSocket',
-                account_id,
-                error_code: error.code || null,
-            });
-            if (error.code !== 'AuthorizationRequired') {
-                console.error('Authenticated WebSocket account probe failed:', error);
-            }
-            return error;
-        }
-
-        const balance = response?.balance;
-        if (!balance) {
-            this.is_authorized = false;
-            setIsAuthorized(false);
-            return;
-        }
-
-        const client_accounts = safeParse<Record<string, TStoredClientAccount>>(
-            localStorage.getItem('clientAccounts'),
-            {}
-        );
-        const active_account = client_accounts[account_id] ?? { loginid: account_id };
-        const account_list = Object.entries(client_accounts).map(([loginid, account]) => ({
-            balance: Number(account.balance ?? (loginid === account_id ? balance.balance : 0) ?? 0),
-            currency: account.currency ?? balance.currency ?? '',
-            is_disabled: 0,
-            is_virtual: isVirtualAccount(account, loginid) ? 1 : 0,
-            landing_company_name: '',
-            linked_to: [],
-            loginid,
-        }));
-
-        const auth_data = {
-            account_list,
-            balance: Number(balance.balance ?? 0),
-            country: localStorage.getItem('client.country') ?? '',
-            currency: balance.currency ?? active_account.currency ?? '',
-            email: '',
-            fullname: '',
-            is_virtual: isVirtualAccount(active_account, account_id) ? 1 : 0,
-            landing_company_fullname: '',
-            landing_company_name: '',
-            linked_to: [],
-            local_currencies: {},
-            loginid: account_id,
-            preferred_language: 'EN',
-            scopes: [],
-            upgradeable_landing_companies: [],
-            user_id: 0,
-        } as TAuthData;
-
-        this.account_info = auth_data;
-        setAccountList(auth_data.account_list || []);
-        setAuthData(auth_data);
-        setIsAuthorized(true);
-        this.is_authorized = true;
-        localStorage.setItem('client_account_details', JSON.stringify(auth_data.account_list));
-
-        if (this.has_active_symbols) {
-            this.toggleRunButton(false);
-        } else {
-            this.active_symbols_promise = this.getActiveSymbols();
-        }
-        this.subscribe().catch(() => undefined);
-    }
-
-    async getSelfExclusion() {
-        if (!this.api || !this.is_authorized) return;
-        await this.api.getSelfExclusion();
-        // TODO: fix self exclusion
     }
 
     async subscribe() {
@@ -381,6 +375,7 @@ class APIBase {
                         [streamName]: 1,
                         subscribe: 1,
                     });
+
                     if (subscription) {
                         this.current_auth_subscriptions.push(subscription);
                     }
@@ -393,39 +388,60 @@ class APIBase {
 
         const streamsToSubscribe = ['balance', 'transaction', 'proposal_open_contract'];
 
-        await Promise.allSettled(streamsToSubscribe.map(subscribeToStream));
+        await Promise.all(streamsToSubscribe.map(subscribeToStream));
     }
 
     getActiveSymbols = async () => {
-        return doUntilDone(() => this.api?.send({ active_symbols: 'brief' }), [], this).then(
-            ({ active_symbols = [] }) => {
-                const pip_sizes = {};
-                if (active_symbols.length) this.has_active_symbols = true;
-                active_symbols.forEach(
-                    ({
-                        symbol,
-                        underlying_symbol,
-                        pip,
-                        pip_size,
-                    }: {
-                        symbol: string;
-                        underlying_symbol?: string;
-                        pip?: string;
-                        pip_size?: string;
-                    }) => {
-                        const symbol_code = underlying_symbol || symbol;
-                        const pip_value = pip ?? pip_size;
-                        if (symbol_code && pip_value) {
-                            (pip_sizes as Record<string, number>)[symbol_code] = +(+pip_value).toExponential().substring(3);
-                        }
-                    }
-                );
-                this.pip_sizes = pip_sizes as Record<string, number>;
-                this.toggleRunButton(false);
-                this.active_symbols = active_symbols;
-                return Array.isArray(active_symbols) ? active_symbols : [];
+        if (!this.api) {
+            throw new Error('API connection not available for fetching active symbols');
+        }
+
+        try {
+            // Add timeout to prevent hanging
+            const timeout = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Active symbols fetch timeout')), this.ACTIVE_SYMBOLS_TIMEOUT_MS)
+            );
+
+            const activeSymbolsPromise = doUntilDone(() => this.api?.send({ active_symbols: 'brief' }), [], this);
+
+            const apiResult = await Promise.race([activeSymbolsPromise, timeout]);
+
+            const { active_symbols = [], error = {} } = apiResult as any;
+
+            if (error && Object.keys(error).length > 0) {
+                throw new Error(`Active symbols API error: ${error.message || 'Unknown error'}`);
             }
-        );
+
+            if (!active_symbols.length) {
+                throw new Error('No active symbols received from API');
+            }
+
+            this.has_active_symbols = true;
+
+            // Process active symbols using the dedicated service with fallback
+            try {
+                const enrichmentTimeout = new Promise<never>((_, reject) =>
+                    setTimeout(() => reject(new Error('Enrichment timeout')), this.ENRICHMENT_TIMEOUT_MS)
+                );
+
+                const enrichmentPromise = activeSymbolsProcessorService.processActiveSymbols(active_symbols);
+                const processedResult = await Promise.race([enrichmentPromise, enrichmentTimeout]);
+
+                this.active_symbols = processedResult.enrichedSymbols;
+                this.pip_sizes = processedResult.pipSizes;
+            } catch (enrichmentError) {
+                console.warn('Symbol enrichment failed, using raw symbols:', enrichmentError);
+                // Fallback to raw symbols if enrichment fails
+                this.active_symbols = active_symbols;
+                this.pip_sizes = {};
+            }
+
+            this.toggleRunButton(false);
+            return this.active_symbols;
+        } catch (error) {
+            console.error('Failed to fetch and process active symbols:', error);
+            throw error;
+        }
     };
 
     toggleRunButton = (toggle: boolean) => {

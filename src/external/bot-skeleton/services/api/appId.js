@@ -2,129 +2,118 @@ import { getSocketURL } from '@/components/shared';
 import DerivAPIBasic from '@deriv/deriv-api/dist/DerivAPIBasic';
 import APIMiddleware from './api-middleware';
 
+/**
+ * Singleton instance management for DerivAPI
+ */
 let derivApiInstance = null;
 let derivApiPromise = null;
-let currentWebSocketBaseURL = null;
+let currentWebSocketURL = null;
 
-const buildForgetResponse = request => {
-    const msg_type = request?.forget_all != null ? 'forget_all' : 'forget';
-    return {
-        [msg_type]: request?.[msg_type],
-        echo_req: request,
-        msg_type,
-    };
-};
-
-const installCleanupCompatibility = api => {
-    if (!api || api.__gts_cleanup_compat_installed) return api;
-
-    const originalSend = api.send?.bind(api);
-    const originalForget = api.forget?.bind(api);
-
-    api.send = request => {
-        if (request?.forget_all != null) {
-            return Promise.resolve(buildForgetResponse(request));
-        }
-
-        if (!originalSend) {
-            return Promise.reject(new Error('API send is not available.'));
-        }
-
-        return originalSend(request).catch(error => {
-            if (request?.forget != null || request?.forget_all != null) {
-                return buildForgetResponse(request);
-            }
-            throw error;
-        });
-    };
-
-    api.forget = id => {
-        const request = { forget: id };
-        if (!id) return Promise.resolve(buildForgetResponse(request));
-
-        if (originalForget) {
-            return originalForget(id).catch(() => buildForgetResponse(request));
-        }
-
-        return api.send(request).catch(() => buildForgetResponse(request));
-    };
-
-    api.forgetAll = (...types) => {
-        const value = types.length === 1 ? types[0] : types;
-        return Promise.resolve(buildForgetResponse({ forget_all: value }));
-    };
-
-    api.__gts_cleanup_compat_installed = true;
-    return api;
-};
-
+/**
+ * Clears the singleton instance (useful for logout or forced reconnection)
+ */
 export const clearDerivApiInstance = () => {
     if (derivApiInstance?.connection) {
         try {
             derivApiInstance.connection.close();
-        } catch {
-            /* noop */
+        } catch (error) {
+            console.error('[DerivAPI] Error closing WebSocket:', error);
         }
     }
     derivApiInstance = null;
     derivApiPromise = null;
-    currentWebSocketBaseURL = null;
+    currentWebSocketURL = null;
 };
 
+/**
+ * Generates a Deriv API instance with WebSocket connection using singleton pattern
+ * Prevents multiple WebSocket connections by reusing existing instance
+ * Now supports async WebSocket URL fetching with authenticated flow
+ * @param {boolean} forceNew - Force creation of new instance (default: false)
+ * @returns Promise with DerivAPIBasic instance
+ */
 export const generateDerivApiInstance = async (forceNew = false) => {
-    if (forceNew) clearDerivApiInstance();
+    // If forcing new instance, clear existing one
+    if (forceNew) {
+        console.log('[DerivAPI] Forcing new instance creation');
+        clearDerivApiInstance();
+    }
 
-    const state = derivApiInstance?.connection?.readyState;
-    if (state === WebSocket.OPEN) return derivApiInstance;
-    if (state === WebSocket.CONNECTING && derivApiPromise) return derivApiPromise;
-    if (state === WebSocket.CLOSING || state === WebSocket.CLOSED) clearDerivApiInstance();
-    if (derivApiPromise) return derivApiPromise;
-
-    derivApiPromise = (async () => {
-        const wsURL = await getSocketURL();
-        const nextBaseURL = `${wsURL}`.split('?')[0];
-
-        if (currentWebSocketBaseURL && currentWebSocketBaseURL !== nextBaseURL) {
+    // If there's already an instance, check its state
+    if (derivApiInstance) {
+        const readyState = derivApiInstance.connection?.readyState;
+        // Return existing instance if it's connecting or open
+        if (readyState === WebSocket.CONNECTING || readyState === WebSocket.OPEN) {
+            console.log('[DerivAPI] Reusing existing instance (state:', readyState, ')');
+            return derivApiInstance;
+        } else {
+            // Connection is closed or closing, clear it
+            console.log('[DerivAPI] Existing instance not usable (state:', readyState, '), creating new');
             clearDerivApiInstance();
-            return generateDerivApiInstance(true);
         }
+    }
 
-        currentWebSocketBaseURL = nextBaseURL;
-        const socket = new WebSocket(wsURL);
-        const api = new DerivAPIBasic({
-            connection: socket,
-            middleware: new APIMiddleware({}),
-        });
+    // If there's already a creation in progress, return that promise
+    if (derivApiPromise) {
+        console.log('[DerivAPI] Reusing existing creation promise');
+        return derivApiPromise;
+    }
 
-        derivApiInstance = installCleanupCompatibility(api);
+    // Create new instance
+    derivApiPromise = (async () => {
+        try {
+            // Await the async getSocketURL() function
+            const wsURL = await getSocketURL();
 
-        return new Promise((resolve, reject) => {
-            const cleanup = () => {
-                clearTimeout(timeout);
-                socket.removeEventListener('open', handleOpen);
-                socket.removeEventListener('error', handleError);
-            };
-            const handleOpen = () => {
-                cleanup();
-                resolve(api);
-            };
-            const handleError = event => {
-                cleanup();
+            // Check if URL changed (account switch scenario)
+            if (currentWebSocketURL && currentWebSocketURL !== wsURL) {
+                console.log('[DerivAPI] WebSocket URL changed, clearing old instance');
                 clearDerivApiInstance();
-                reject(event);
-            };
-            const timeout = setTimeout(() => {
-                cleanup();
-                clearDerivApiInstance();
-                reject(new Error('Deriv WebSocket connection timeout'));
-            }, 15000);
+            }
 
-            socket.addEventListener('open', handleOpen);
-            socket.addEventListener('error', handleError);
-        });
-    })().finally(() => {
-        derivApiPromise = null;
-    });
+            currentWebSocketURL = wsURL;
+
+            console.log('[DerivAPI] Creating new WebSocket connection to:', wsURL);
+            const deriv_socket = new WebSocket(wsURL);
+            const deriv_api = new DerivAPIBasic({
+                connection: deriv_socket,
+                middleware: new APIMiddleware({}),
+            });
+
+            // Store the instance immediately (don't wait for connection)
+            derivApiInstance = deriv_api;
+
+            // Set up close handler to clear instance
+            deriv_socket.addEventListener('close', () => {
+                console.log('[DerivAPI] WebSocket connection closed');
+                if (derivApiInstance === deriv_api) {
+                    derivApiInstance = null;
+                    currentWebSocketURL = null;
+                }
+            });
+
+            // Log when connection opens
+            deriv_socket.addEventListener('open', () => {
+                console.log('[DerivAPI] WebSocket connection established');
+            });
+
+            deriv_socket.addEventListener('error', error => {
+                console.error('[DerivAPI] WebSocket connection error:', error);
+            });
+
+            return deriv_api;
+        } catch (error) {
+            console.error('[DerivAPI] Error creating instance:', error);
+            derivApiPromise = null;
+            derivApiInstance = null;
+            throw error;
+        } finally {
+            // Clear the promise after a short delay to allow reuse during concurrent calls
+            setTimeout(() => {
+                derivApiPromise = null;
+            }, 100);
+        }
+    })();
 
     return derivApiPromise;
 };
@@ -135,49 +124,18 @@ export const getLoginId = () => {
     return null;
 };
 
-const safeParse = (value, fallback = {}) => {
-    try {
-        return value ? JSON.parse(value) : fallback;
-    } catch {
-        return fallback;
-    }
-};
-
-export const getOAuthAccessToken = () => {
-    const token = localStorage.getItem('authToken');
-    if (token && token !== 'null') return token;
+export const V2GetActiveAccountId = () => {
+    const account_id = localStorage.getItem('active_loginid');
+    if (account_id && account_id !== 'null') return account_id;
     return null;
 };
 
-const isLegacyAuthorizeToken = token => {
-    if (!token || typeof token !== 'string') return false;
-
-    const oauth_token = getOAuthAccessToken();
-    if (oauth_token && token === oauth_token) return false;
-
-    // OAuth/Ory/JWT-style access tokens must never be passed to legacy authorize.
-    return !token.includes('.');
-};
-
-export const getLegacyAuthorizeToken = () => {
-    const active_loginid = getLoginId();
-    if (!active_loginid) return null;
-
-    const accounts_list = safeParse(localStorage.getItem('accountsList'));
-    const token = accounts_list?.[active_loginid];
-
-    return isLegacyAuthorizeToken(token) ? token : null;
-};
-
-export const V2GetActiveToken = () => getLegacyAuthorizeToken();
-
-export const V2GetActiveClientId = () => {
-    return getLoginId();
-};
-
 export const getToken = () => {
+    const active_loginid = getLoginId();
+    const client_accounts = JSON.parse(localStorage.getItem('accountsList')) ?? undefined;
+    const active_account = (client_accounts && client_accounts[active_loginid]) || {};
     return {
-        token: getLegacyAuthorizeToken() ?? undefined,
-        account_id: getLoginId() ?? undefined,
+        token: active_account ?? undefined,
+        account_id: active_loginid ?? undefined,
     };
 };

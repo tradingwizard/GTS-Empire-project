@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import React from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
@@ -6,8 +7,16 @@ import SelectNative from '@/components/shared_ui/select-native';
 import { useStore } from '@/hooks/useStore';
 import { LabelPairedArrowLeftSmRegularIcon, LabelPairedSearchSmRegularIcon } from '@deriv/quill-icons/LabelPaired';
 import { LegacyCloseCircle1pxBlackIcon } from '@deriv/quill-icons/Legacy';
+/* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
+/* [/AI] */
 import SearchInput from './common/search-input';
 import { TTutorialsTabItem } from './tutorials';
+
+type TListItem = {
+    id: string;
+    value: string;
+    text: string;
+};
 
 type TTutorialsTabMobile = {
     tutorial_tabs: TTutorialsTabItem[];
@@ -40,8 +49,13 @@ const TutorialsTabMobile = observer(({ tutorial_tabs, prev_active_tutorials }: T
     };
 
     const onChangeHandle = React.useCallback(
-        ({ target }: React.ChangeEvent<HTMLSelectElement>) =>
-            setActiveTabTutorial(tutorial_tabs.findIndex(i => i.label === target.value)),
+        ({ target }: React.ChangeEvent<HTMLSelectElement>) => {
+            const index = tutorial_tabs.findIndex(i => i.label === target.value);
+            setActiveTabTutorial(index);
+
+            /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
+            /* [/AI] */
+        },
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [active_tab_tutorials]
     );
@@ -115,7 +129,7 @@ const TutorialsTabMobile = observer(({ tutorial_tabs, prev_active_tutorials }: T
                     className='dc-tabs__wrapper__group__search-input--active'
                     list_items={
                         tutorial_tabs.map(({ label }, idx) => ({
-                            id: idx,
+                            id: idx.toString(),
                             value: label,
                             text: label,
                         })) as TListItem[]

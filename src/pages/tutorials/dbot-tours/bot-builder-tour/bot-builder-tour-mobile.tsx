@@ -3,6 +3,7 @@ import { observer } from 'mobx-react-lite';
 import ProgressBarTracker from '@/components/shared_ui/progress-bar-tracker';
 import Text from '@/components/shared_ui/text';
 import { useStore } from '@/hooks/useStore';
+import { isPreviewMode } from '@/utils/is-preview-mode';
 import { getSetting } from '@/utils/settings';
 import { localize } from '@deriv-com/translations';
 import TourButton from '../common/tour-button';
@@ -30,6 +31,8 @@ const BotBuilderTourMobile = observer(() => {
     const test_id = tour_step === 3 ? 'finish-bot-builder-tour' : 'next-bot-builder-tour';
 
     React.useEffect(() => {
+        // Onboarding tours are noise inside the App Builder preview — skip them.
+        if (isPreviewMode()) return;
         setTourActiveStep(tour_step);
         //component does not rerender so calling this to highlight
         !show_mobile_tour_dialog && highlightLoadModalButton(active_tour, tour_step);

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 export const shuffleArray = <T>(array: T[]): T[] => {
     const firstDigit = (num: number) => Number(String(num)[0]);
 

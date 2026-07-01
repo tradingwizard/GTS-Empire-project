@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import React from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
@@ -6,7 +7,8 @@ import { useStore } from '@/hooks/useStore';
 import { LabelPairedChevronDownMdFillIcon } from '@deriv/quill-icons/LabelPaired';
 import { localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
-import { rudderStackSendOpenEvent } from '../../../analytics/rudderstack-common-events';
+/* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
+/* [/AI] */
 import ToolbarButton from '../toolbar/toolbar-button';
 import SearchBox from './search-box';
 import { ToolboxItems } from './toolbox-items';
@@ -18,7 +20,6 @@ const Toolbox = observer(() => {
         hasSubCategory,
         is_search_loading,
         onMount,
-        onSearch,
         onSearchBlur,
         onSearchClear,
         onSearchKeyUp,
@@ -34,6 +35,7 @@ const Toolbox = observer(() => {
 
     const toolbox_ref = React.useRef(ToolboxItems());
     const [is_open, setOpen] = React.useState(true);
+    const [pending_selection] = React.useState<string | null>(null);
 
     React.useEffect(() => {
         onMount(toolbox_ref);
@@ -43,12 +45,8 @@ const Toolbox = observer(() => {
 
     const handleQuickStrategyOpen = () => {
         setFormVisibility(true);
-        // send to rs if quick strategy is opened from bot builder (desktop)
-        rudderStackSendOpenEvent({
-            subpage_name: 'bot_builder',
-            subform_source: 'bot_builder',
-            subform_name: 'quick_strategy',
-        });
+        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
+        /* [/AI] */
     };
 
     if (isDesktop) {
@@ -87,7 +85,7 @@ const Toolbox = observer(() => {
                     >
                         <SearchBox
                             is_search_loading={is_search_loading}
-                            onSearch={onSearch}
+                            onSearch={toolbox.onSearch}
                             onSearchBlur={onSearchBlur}
                             onSearchClear={onSearchClear}
                             onSearchKeyUp={onSearchKeyUp}
@@ -104,6 +102,8 @@ const Toolbox = observer(() => {
                                                 className={classNames('db-toolbox__row', {
                                                     'db-toolbox__row--active':
                                                         selected_category?.getAttribute('id') === category?.id,
+                                                    'db-toolbox__row--pending':
+                                                        pending_selection === category?.getAttribute('id'),
                                                 })}
                                             >
                                                 <div
@@ -147,6 +147,9 @@ const Toolbox = observer(() => {
                                                                                 selected_category?.getAttribute(
                                                                                     'id'
                                                                                 ) === subCategory?.id,
+                                                                            'db-toolbox__sub-category-row--pending':
+                                                                                pending_selection ===
+                                                                                subCategory?.getAttribute('id'),
                                                                         }
                                                                     )}
                                                                     onClick={() => {

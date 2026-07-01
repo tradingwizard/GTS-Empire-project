@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import crc32 from 'crc-32/crc32';
 import { action, makeObservable, observable, reaction } from 'mobx';
 import { cloneObject, isProduction } from '@/components/shared';

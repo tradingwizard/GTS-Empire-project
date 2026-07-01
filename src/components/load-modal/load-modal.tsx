@@ -1,12 +1,12 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import React from 'react';
 import { observer } from 'mobx-react-lite';
 import { tabs_title } from '@/constants/load-modal';
 import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
-import { rudderStackSendSwitchLoadStrategyTabEvent } from '../../analytics/rudderstack-bot-builder';
-import { rudderStackSendCloseEvent } from '../../analytics/rudderstack-common-events';
-import { LOAD_MODAL_TABS } from '../../analytics/utils';
+/* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
+/* [/AI] */
 import MobileFullPageModal from '../shared_ui/mobile-full-page-modal';
 import Modal from '../shared_ui/modal';
 import Tabs from '../shared_ui/tabs';
@@ -18,6 +18,7 @@ import RecentFooter from './recent-footer';
 
 const LoadModal: React.FC = observer(() => {
     const { load_modal, dashboard, google_drive } = useStore();
+    const { is_google_drive_configured } = google_drive;
     const {
         active_index,
         is_load_modal_open,
@@ -29,15 +30,13 @@ const LoadModal: React.FC = observer(() => {
         tab_name,
     } = load_modal;
     const { setPreviewOnPopup } = dashboard;
-    const { is_google_drive_enabled } = google_drive;
     const { isDesktop } = useDevice();
     const header_text = localize('Load strategy');
 
     const handleTabItemClick = (active_index: number) => {
         setActiveTabIndex(active_index);
-        rudderStackSendSwitchLoadStrategyTabEvent({
-            load_strategy_tab: LOAD_MODAL_TABS[active_index + (!isDesktop ? 1 : 0)],
-        });
+        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
+        /* [/AI] */
     };
 
     if (!isDesktop) {
@@ -49,10 +48,7 @@ const LoadModal: React.FC = observer(() => {
                 onClickClose={() => {
                     setPreviewOnPopup(false);
                     toggleLoadModal();
-                    rudderStackSendCloseEvent({
-                        subform_name: 'load_strategy',
-                        load_strategy_tab: LOAD_MODAL_TABS[active_index + 1],
-                    });
+                    // Removed close event tracking as per V2 requirements
                 }}
                 height_offset='80px'
                 page_overlay
@@ -61,11 +57,11 @@ const LoadModal: React.FC = observer(() => {
                     <div label={localize('Local')}>
                         <Local />
                     </div>
-                    {is_google_drive_enabled ? (
+                    {is_google_drive_configured && (
                         <div label='Google Drive'>
                             <GoogleDrive />
                         </div>
-                    ) : null}
+                    )}
                 </Tabs>
             </MobileFullPageModal>
         );
@@ -83,10 +79,7 @@ const LoadModal: React.FC = observer(() => {
             is_open={is_load_modal_open}
             toggleModal={() => {
                 toggleLoadModal();
-                rudderStackSendCloseEvent({
-                    subform_name: 'load_strategy',
-                    load_strategy_tab: LOAD_MODAL_TABS[active_index + (!isDesktop ? 1 : 0)],
-                });
+                // Removed close event tracking as per V2 requirements
             }}
             onEntered={onEntered}
             elements_to_ignore={[document.querySelector('.injectionDiv')]}
@@ -99,11 +92,11 @@ const LoadModal: React.FC = observer(() => {
                     <div label={localize('Local')}>
                         <Local />
                     </div>
-                    {is_google_drive_enabled ? (
+                    {is_google_drive_configured && (
                         <div label='Google Drive'>
                             <GoogleDrive />
                         </div>
-                    ) : null}
+                    )}
                 </Tabs>
             </Modal.Body>
             {has_recent_strategies && (

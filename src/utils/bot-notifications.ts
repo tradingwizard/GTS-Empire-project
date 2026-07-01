@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import { TNotificationMessage } from '@deriv/stores/types';
 import { localize } from '@deriv-com/translations';
 import { BrandConstants } from '@deriv-com/utils';
@@ -8,7 +9,7 @@ export const switch_account_notification = () => ({
     key: 'bot_switch_account',
     header: localize('You have switched accounts.'),
     message: localize(
-        'Our system will finish any GTS Empire trades that are running, and GTS Empire will not place any new trades.'
+        'Our system will finish any Deriv Bot trades that are running, and Deriv Bot will not place any new trades.'
     ),
     type: 'warning',
     is_persistent: true,

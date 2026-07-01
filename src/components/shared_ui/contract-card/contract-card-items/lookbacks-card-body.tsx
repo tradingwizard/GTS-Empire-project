@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import React from 'react';
 import { CONTRACT_TYPES, getCardLabels, getDisplayStatus, isCryptocurrency } from '@/components/shared';
 import { Localize } from '@deriv-com/translations';

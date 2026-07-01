@@ -7,7 +7,7 @@ import { sanitizeParameterValue } from '../utils/xss-protection';
  * @param errorResponse - The complete error response containing code_args, details, etc.
  * @returns Processed parameters object
  */
-const processBackendParameters = (_message: string, errorResponse?: Record<string, any>) => {
+const processBackendParameters = (message: string, errorResponse?: Record<string, any>) => {
     if (!errorResponse) return {};
 
     const params: Record<string, any> = {};
@@ -365,13 +365,7 @@ export const getBackendErrorMessages = () => ({
  */
 export const getLocalizedErrorMessage = (errorCode: string, errorResponse?: Record<string, any>): string => {
     const errorMessages = getBackendErrorMessages();
-    let message = '';
-
-    if (errorCode === 'InputValidationFailed' && errorResponse?.message) {
-        message = errorResponse.message;
-    } else {
-        message = errorMessages[errorCode as keyof typeof errorMessages] || '';
-    }
+    let message = errorMessages[errorCode as keyof typeof errorMessages];
 
     if (!message) {
         // Log unknown error codes for monitoring and improvement

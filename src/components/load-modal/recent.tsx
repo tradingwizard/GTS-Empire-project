@@ -8,8 +8,9 @@ import RecentWorkspace from './recent-workspace';
 import WorkspaceControl from './workspace-control';
 
 const RecentComponent = observer(() => {
-    const { load_modal } = useStore();
+    const { load_modal, google_drive } = useStore();
     const { is_explanation_expand, recent_strategies, toggleExplanationExpand } = load_modal;
+    const { is_google_drive_configured } = google_drive;
     if (recent_strategies.length) {
         return (
             <div className='load-strategy__container load-strategy__container--has-footer'>
@@ -43,7 +44,11 @@ const RecentComponent = observer(() => {
                     <Localize i18n_default_text='You do not have any recent bots' />
                 </div>
                 <div className='load-strategy__recent__empty-description'>
-                    <Localize i18n_default_text='Create one or upload one from your local drive or Google Drive.' />
+                    {is_google_drive_configured ? (
+                        <Localize i18n_default_text='Create one or upload one from your local drive or Google Drive.' />
+                    ) : (
+                        <Localize i18n_default_text='Create one or upload one from your local drive.' />
+                    )}
                 </div>
                 <div
                     tabIndex={0}

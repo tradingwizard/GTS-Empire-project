@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { clearAuthInfo } from '@/external/deriv-core';
 import { useStore } from '@/hooks/useStore';
 import { ErrorLogger } from '@/utils/error-logger';
 
@@ -21,8 +22,8 @@ export const useLogout = () => {
             // If logout fails, clear only auth-related storage keys
             // This preserves user preferences (theme, language, etc.) while ensuring auth data is cleared
             try {
-                // Clear auth-related sessionStorage items
-                sessionStorage.removeItem('auth_info');
+                // Clear auth token via vendored deriv-core
+                clearAuthInfo();
 
                 // Clear auth-related localStorage items
                 localStorage.removeItem('active_loginid');

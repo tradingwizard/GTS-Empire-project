@@ -10,24 +10,29 @@ const useThemeSwitcher = () => {
     };
     const { setDarkMode, is_dark_mode_on } = ui;
 
+    // Applies a specific theme. Updates localStorage, the body class, and the ui
+    // store so everything that reads is_dark_mode_on (incl. the chart) follows.
+    const setTheme = useCallback(
+        (theme: 'light' | 'dark') => {
+            const body = document.querySelector('body');
+            if (!body) return;
+            const isDark = theme === 'dark';
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            body.classList.remove('theme--light', 'theme--dark');
+            body.classList.add(isDark ? 'theme--dark' : 'theme--light');
+            setDarkMode(isDark);
+        },
+        [setDarkMode]
+    );
+
     const toggleTheme = useCallback(() => {
-        const body = document.querySelector('body');
-        if (!body) return;
-        if (body.classList.contains('theme--dark')) {
-            localStorage.setItem('theme', 'light');
-            body.classList.remove('theme--dark');
-            body.classList.add('theme--light');
-            setDarkMode(false);
-        } else {
-            localStorage.setItem('theme', 'dark');
-            body.classList.remove('theme--light');
-            body.classList.add('theme--dark');
-            setDarkMode(true);
-        }
-    }, [setDarkMode]);
+        const isCurrentlyDark = document.querySelector('body')?.classList.contains('theme--dark');
+        setTheme(isCurrentlyDark ? 'light' : 'dark');
+    }, [setTheme]);
 
     return {
         toggleTheme,
+        setTheme,
         is_dark_mode_on,
         setDarkMode,
     };

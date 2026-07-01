@@ -287,7 +287,11 @@ describe('account-helpers', () => {
 
             removeUrlParameter('token');
 
-            expect(window.history.replaceState).toHaveBeenCalledWith({}, expect.any(String), expect.any(String));
+            expect(window.history.replaceState).toHaveBeenCalledWith(
+                {},
+                expect.any(String),
+                expect.any(String)
+            );
         });
     });
 

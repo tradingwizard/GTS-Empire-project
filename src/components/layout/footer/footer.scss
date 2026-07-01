@@ -82,17 +82,24 @@
     padding-inline: 1.6rem;
 
     &-button {
-        height: 8.8rem;
+        // No flag icons are shown, so the button hugs the language title.
+        height: auto;
         width: 13.3rem;
         display: flex;
         align-items: center;
-        flex-direction: column;
-        padding: 0.8rem;
+        justify-content: center;
+        padding: 0.8rem 1.2rem;
 
         &-selected {
             border-radius: 4px;
             border: 1px solid var(--brand-blue, $color-green);
         }
+    }
+
+    // Hide flag SVG icons in language modal buttons - icons are intentionally not shown,
+    // only language names are displayed
+    &-button svg {
+        display: none;
     }
 }
 

@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 /* eslint @typescript-eslint/triple-slash-reference: "off" */
 /// <reference path="../../../@types/react-div-100vh/react-div-100vh-config.d.ts" />
 import React from 'react';

@@ -61,6 +61,7 @@ const mockActiveAccount = {
     currency: 'USD',
     balance: '100.00',
     isVirtual: false,
+    is_virtual: 0,
     isActive: true,
     currencyLabel: 'USD',
     icon: null,

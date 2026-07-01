@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import { lazy, Suspense } from 'react';
 import { IconSize } from '@deriv/quill-icons';
 

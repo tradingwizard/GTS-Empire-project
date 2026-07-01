@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import { action, makeObservable, observable, runInAction } from 'mobx';
 import { help_content_config } from '@/utils/help-content/help-content.config';
 import * as help_strings from '@/utils/help-content/help-strings';

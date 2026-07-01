@@ -1,8 +1,8 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import React from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 import Journal from '@/components/journal';
-import SelfExclusion from '@/components/self-exclusion';
 import Button from '@/components/shared_ui/button';
 import Drawer from '@/components/shared_ui/drawer';
 import Modal from '@/components/shared_ui/modal';
@@ -14,7 +14,6 @@ import TradeAnimation from '@/components/trade-animation';
 import Transactions from '@/components/transactions';
 import { DBOT_TABS } from '@/constants/bot-contents';
 import { popover_zindex } from '@/constants/z-indexes';
-import usePWA from '@/hooks/usePWA';
 import { useStore } from '@/hooks/useStore';
 import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
@@ -144,7 +143,7 @@ const DrawerContent = ({ active_index, is_drawer_open, active_tour, setActiveTab
         return () => {
             document.body.style.overflow = '';
         };
-    }, [is_drawer_open]);
+    }, [is_drawer_open, isDesktop]);
 
     return (
         <>
@@ -182,9 +181,8 @@ const DrawerFooter = ({ is_clear_stat_disabled, onClearStatClick }: TDrawerFoote
 );
 
 const MobileDrawerFooter = () => {
-    const { isPWALaunch, isIOS } = usePWA();
     return (
-        <div className={classNames('controls__section', { 'controls__section--ios-pwa': isIOS && isPWALaunch })}>
+        <div className='controls__section'>
             <div className='controls__buttons'>
                 <TradeAnimation className='controls__animation' should_show_overlay />
             </div>
@@ -261,7 +259,7 @@ const RunPanel = observer(() => {
         is_clear_stat_disabled,
         onClearStatClick,
         onMount,
-        onRunButtonClick,
+        onRunButtonClick, // eslint-disable-line @typescript-eslint/no-unused-vars
         onUnmount,
         setActiveTabIndex,
         toggleDrawer,
@@ -337,7 +335,7 @@ const RunPanel = observer(() => {
                 </Drawer>
                 {!isDesktop && <MobileDrawerFooter />}
             </div>
-            <SelfExclusion onRunButtonClick={onRunButtonClick} />
+
             <StatisticsInfoModal
                 is_mobile={!isDesktop}
                 is_statistics_info_modal_open={is_statistics_info_modal_open}

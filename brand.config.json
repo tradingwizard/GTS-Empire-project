@@ -2,13 +2,12 @@
     "brand_name": "GTS Empire",
     "brand_domain": "gtstrader.app",
     "brand_hostname": {
-        "staging": "gtstrader.app",
-        "production": "gtstrader.app"
+        "staging": "gtstrader.app/dashboard",
+        "production": "gtstrader.app/dashboard"
     },
     "domain_name": "gtstrader.app",
-    "main_branch": "main",
     "colors": {
-        "primary": "#e21e26",
+        "primary": "#D61717",
         "secondary": "#64748b",
         "tertiary": "#8b5cf6",
         "success": "#10b981",
@@ -33,7 +32,7 @@
     },
     "typography": {
         "font_family": {
-            "primary": "'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+            "primary": "DM Sans",
             "secondary": "Georgia, 'Times New Roman', Times, serif",
             "monospace": "'Courier New', Courier, monospace"
         },
@@ -81,17 +80,6 @@
     },
     "platform": {
         "name": "GTS Empire",
-        "app_id": "33bwKJisse4x97RR0zpa0",
-        "client_id": "33bwKJisse4x97RR0zpa0",
-        "oauth_redirect_uri": "https://gtstrader.app/",
-        "logo": {
-            "type": "component",
-            "component_name": "BrandLogo",
-            "alt_text": "GTS Empire",
-            "link_url": "/",
-            "show_text": false,
-            "text": "GTS Empire"
-        },
         "footer": {
             "enable_language_settings": false,
             "enable_theme_toggle": true
@@ -106,11 +94,11 @@
         },
         "auth2_url": {
             "production": "https://auth.deriv.com/oauth2/",
-            "staging": "https://auth.deriv.com/oauth2/"
+            "staging": "https://staging-auth.deriv.com/oauth2/"
         },
         "derivws": {
             "url": {
-                "staging": "https://api.derivws.com/trading/v1/",
+                "staging": "https://staging-api.derivws.com/trading/v1/",
                 "production": "https://api.derivws.com/trading/v1/"
             },
             "directories": {

@@ -1,220 +1,88 @@
-import { LocalStorageConstants, LocalStorageUtils, URLUtils } from '@deriv-com/utils';
-import { fetchAccounts, fetchWebSocketUrl, isVirtualAccount } from '@/external/bot-skeleton/services/api/deriv-rest';
-import { isStaging } from '../url/helpers';
+import {
+    buildAuthorizationUrl,
+    buildSignUpUrl,
+    getAuthInfo,
+    parseReferralLink,
+    parseLandingParams,
+    resolveReferralViaProxy,
+} from '@/external/deriv-core';
+import type { AuthConfig } from '@/external/deriv-core';
+import { DerivWSAccountsService } from '@/services/derivws-accounts.service';
+import brandConfig from '../../../../../brand.config.json';
 
-export const GTS_APP_ID = process.env.GTS_APP_ID || '33bwKJisse4x97RR0zpa0';
+// =============================================================================
+// Constants - Domain & Server Configuration (from brand.config.json)
+// =============================================================================
 
-export const APP_IDS = {
-    LOCALHOST: GTS_APP_ID,
-    TMP_STAGING: GTS_APP_ID,
-    STAGING: GTS_APP_ID,
-    STAGING_BE: GTS_APP_ID,
-    STAGING_ME: GTS_APP_ID,
-    PRODUCTION: GTS_APP_ID,
-    PRODUCTION_BE: GTS_APP_ID,
-    PRODUCTION_ME: GTS_APP_ID,
-};
+// Production app domains
+export const PRODUCTION_DOMAINS = {
+    COM: brandConfig.platform.hostname.production.com,
+} as const;
 
-export const livechat_license_id = 12049137;
-export const livechat_client_id = '66aa088aad5a414484c1fd1fa8a5ace7';
+// Staging app domains
+export const STAGING_DOMAINS = {
+    COM: brandConfig.platform.hostname.staging.com,
+} as const;
 
-// --- New Deriv API platform (GTS Empire) ----------------------------------
-// These are environment-driven (build-time, via rsbuild `define`) so the same
-// build can target staging/prod without code changes. The defaults match the
-// production gtstrader.app values, so an unset env var is still safe.
-export const DERIV_AUTH_URL = process.env.DERIV_AUTH_URL || 'https://auth.deriv.com/oauth2/auth';
-export const DERIV_API_REST_BASE = process.env.DERIV_API_REST_BASE || 'https://api.derivws.com';
-export const DERIV_OAUTH_SCOPE = process.env.DERIV_OAUTH_SCOPE || 'trade account_manage';
-export const DERIV_WS_APP_ID = process.env.DERIV_WS_APP_ID || process.env.DERIV_APP_ID || GTS_APP_ID;
-const DERIV_AFFILIATE_ID = process.env.DERIV_AFFILIATE_ID || '11789';
-const safeParse = <T,>(value: string | null, fallback: T): T => {
-    try {
-        return value ? JSON.parse(value) : fallback;
-    } catch {
-        return fallback;
-    }
-};
+// WebSocket server URLs
+export const WS_SERVERS = {
+    STAGING: `${brandConfig.platform.derivws.url.staging}options/ws/public`,
+    PRODUCTION: `${brandConfig.platform.derivws.url.production}options/ws/public`,
+} as const;
 
-export const DERIV_AFFILIATE = {
-    id: DERIV_AFFILIATE_ID,
-    referral_code: process.env.DERIV_AFFILIATE_REFERRAL || '3Z48MP6KHY4D',
-    utm_source: DERIV_AFFILIATE_ID,
-    utm_medium: 'affiliate',
-    utm_campaign: 'gts_empire',
-};
+// =============================================================================
+// Helper Functions
+// =============================================================================
 
-export const domain_app_ids = {
-    'gtstrader.app': GTS_APP_ID,
-    'www.gtstrader.app': GTS_APP_ID,
-    'master.bot-standalone.pages.dev': APP_IDS.TMP_STAGING,
-    'staging-dbot.deriv.com': APP_IDS.STAGING,
-    'staging-dbot.deriv.be': APP_IDS.STAGING_BE,
-    'staging-dbot.deriv.me': APP_IDS.STAGING_ME,
-    'dbot.deriv.com': APP_IDS.PRODUCTION,
-    'dbot.deriv.be': APP_IDS.PRODUCTION_BE,
-    'dbot.deriv.me': APP_IDS.PRODUCTION_ME,
-};
-
-export const getCurrentProductionDomain = () =>
-    !/^staging\./.test(window.location.hostname) &&
-    Object.keys(domain_app_ids).find(domain => window.location.hostname === domain);
-
+// Helper to check if we're on production.
+// NEXT_PUBLIC_DERIV_ENV is the authoritative signal (set at build/deploy time and
+// also read by vendored deriv-core for OAuth), so a deployed partner domain resolves the
+// same environment for WebSocket and OAuth. Falls back to hostname detection when
+// the env var is unset (e.g. local dev).
 export const isProduction = () => {
-    const all_domains = Object.keys(domain_app_ids).map(domain => `(www\\.)?${domain.replace('.', '\\.')}`);
-    return new RegExp(`^(${all_domains.join('|')})$`, 'i').test(window.location.hostname);
-};
+    const env = process.env.NEXT_PUBLIC_DERIV_ENV;
+    if (env === 'production') return true;
+    if (env === 'preview' || env === 'staging') return false;
 
-export const isTestLink = () => {
-    return (
-        window.location.origin?.includes('.binary.sx') ||
-        window.location.origin?.includes('bot-65f.pages.dev') ||
-        isLocal()
-    );
+    const hostname = window.location.hostname;
+    const productionDomains = Object.values(PRODUCTION_DOMAINS) as string[];
+    return productionDomains.includes(hostname);
 };
 
 export const isLocal = () => /localhost(:\d+)?$/i.test(window.location.hostname);
 
-const getDerivWebSocketURL = (server_url = 'ws.derivws.com') => {
-    if (/^wss?:\/\//i.test(server_url)) return server_url;
-    return `wss://${server_url}/websockets/v3?app_id=${DERIV_WS_APP_ID}`;
-};
-
 const getDefaultServerURL = () => {
-    if (isTestLink()) {
-        return getDerivWebSocketURL('ws.derivws.com');
-    }
-
-    let active_loginid_from_url;
-    const search = window.location.search;
-    if (search) {
-        const params = new URLSearchParams(document.location.search.substring(1));
-        active_loginid_from_url = params.get('acct1');
-    }
-
-    const loginid = window.localStorage.getItem('active_loginid') ?? active_loginid_from_url;
-    const is_real = loginid && !/^(VRT|VRW)/.test(loginid);
-
-    const server = is_real ? 'green' : 'blue';
-    const server_url = getDerivWebSocketURL(`${server}.derivws.com`);
-
-    return server_url;
-};
-
-export const getDefaultAppIdAndUrl = () => {
-    const server_url = getDefaultServerURL();
-
-    if (isTestLink()) {
-        return { app_id: APP_IDS.LOCALHOST, server_url };
-    }
-
-    const current_domain = getCurrentProductionDomain() ?? '';
-    const app_id = domain_app_ids[current_domain as keyof typeof domain_app_ids] ?? GTS_APP_ID;
-
-    return { app_id, server_url };
-};
-
-export const getAppId = () => {
-    let app_id = null;
-    const config_app_id = window.localStorage.getItem('config.app_id');
-    const current_domain = getCurrentProductionDomain() ?? '';
-
-    if (config_app_id) {
-        app_id = config_app_id;
-    } else if (isStaging()) {
-        app_id = APP_IDS.STAGING;
-    } else if (isTestLink()) {
-        app_id = APP_IDS.LOCALHOST;
-    } else {
-        app_id = domain_app_ids[current_domain as keyof typeof domain_app_ids] ?? GTS_APP_ID;
-    }
-
-    return app_id;
-};
-
-export const getSocketURL = async () => {
-    const local_storage_server_url = window.localStorage.getItem('config.server_url');
-    if (local_storage_server_url) return getDerivWebSocketURL(local_storage_server_url);
-
-    const token = window.localStorage.getItem('authToken');
-    if (!token) return getDefaultServerURL();
+    const isProductionEnv = isProduction();
 
     try {
-        const accounts = await fetchAccounts(token);
-        if (!accounts.length) return getDefaultServerURL();
-
-        const existing_accounts_list = safeParse<Record<string, string>>(
-            window.localStorage.getItem('accountsList'),
-            {}
-        );
-        const accountsList = Object.entries(existing_accounts_list).reduce<Record<string, string>>(
-            (legacy_tokens, [account_id, account_token]) => {
-                if (account_token && account_token !== token && !account_token.includes('.')) {
-                    legacy_tokens[account_id] = account_token;
-                }
-                return legacy_tokens;
-            },
-            {}
-        );
-        const clientAccounts = accounts.reduce<
-            Record<string, { loginid: string; token: string; currency: string; account_type: string }>
-        >((client_accounts, account) => {
-            client_accounts[account.account_id] = {
-                loginid: account.account_id,
-                token: accountsList[account.account_id] ?? '',
-                currency: account.currency,
-                account_type: account.account_type,
-            };
-            return client_accounts;
-        }, {});
-        window.localStorage.setItem('accountsList', JSON.stringify(accountsList));
-        window.localStorage.setItem('clientAccounts', JSON.stringify(clientAccounts));
-        window.sessionStorage.setItem('deriv_accounts', JSON.stringify(accounts));
-
-        const active_loginid = window.localStorage.getItem('active_loginid');
-        const selected_account =
-            (active_loginid && accounts.find(account => account.account_id === active_loginid)) ||
-            accounts.find(isVirtualAccount) ||
-            accounts[0];
-        window.localStorage.setItem('active_loginid', selected_account.account_id);
-        window.localStorage.setItem('account_type', selected_account.account_type);
-
-        return fetchWebSocketUrl(token, selected_account.account_id);
+        return isProductionEnv ? WS_SERVERS.PRODUCTION : WS_SERVERS.STAGING;
     } catch (error) {
-        // Keep the Builder usable if the authenticated account WebSocket cannot
-        // be prepared; logged-out/public metadata still works on the stable
-        // legacy Deriv WebSocket.
-        return getDefaultServerURL();
+        console.error('Error in getDefaultServerURL:', error);
     }
+
+    return isProductionEnv ? WS_SERVERS.PRODUCTION : WS_SERVERS.STAGING;
 };
 
-export const checkAndSetEndpointFromUrl = () => {
-    if (isTestLink()) {
-        const url_params = new URLSearchParams(location.search.slice(1));
-
-        if (url_params.has('qa_server') && url_params.has('app_id')) {
-            const qa_server = url_params.get('qa_server') || '';
-            const app_id = url_params.get('app_id') || '';
-
-            url_params.delete('qa_server');
-            url_params.delete('app_id');
-
-            if (/^(^(www\.)?qa[0-9]{1,4}\.deriv.dev|(.*)\.derivws\.com)$/.test(qa_server) && /^[a-zA-Z0-9]+$/.test(app_id)) {
-                localStorage.setItem('config.app_id', app_id);
-                localStorage.setItem('config.server_url', qa_server.replace(/"/g, ''));
-            }
-
-            const params = url_params.toString();
-            const hash = location.hash;
-
-            location.href = `${location.protocol}//${location.hostname}${location.pathname}${
-                params ? `?${params}` : ''
-            }${hash || ''}`;
-
-            return true;
+/**
+ * Gets the WebSocket URL using the authenticated flow
+ * 1. Get access token from auth_info (localStorage via vendored deriv-core)
+ * 2. Fetch OTP WebSocket URL from DerivWSAccountsService
+ *
+ * @returns Promise with WebSocket URL or fallback to default server
+ */
+export const getSocketURL = async (): Promise<string> => {
+    try {
+        const authInfo = getAuthInfo();
+        if (!authInfo || !authInfo.access_token) {
+            return getDefaultServerURL();
         }
-    }
 
-    return false;
+        const wsUrl = await DerivWSAccountsService.getAuthenticatedWebSocketURL(authInfo.access_token);
+        return wsUrl;
+    } catch (error) {
+        console.error('[DerivWS] Error in getSocketURL:', error);
+        return getDefaultServerURL();
+    }
 };
 
 export const getDebugServiceWorker = () => {
@@ -224,39 +92,71 @@ export const getDebugServiceWorker = () => {
     return false;
 };
 
-export const generateOAuthURL = () => {
-    const { getOauthURL } = URLUtils;
-    const oauth_url = getOauthURL();
-    const original_url = new URL(oauth_url);
-    const hostname = window.location.hostname;
+/**
+ * Generates the OAuth login or sign-up URL using vendored deriv-core
+ *
+ * @param prompt - Optional prompt parameter ('registration' for sign-up flow)
+ * @returns Promise with the OAuth URL string
+ */
+export const generateOAuthURL = async (prompt?: string): Promise<string> => {
+    try {
+        const clientId = process.env.NEXT_PUBLIC_DERIV_APP_ID;
+        if (!clientId) return '';
 
-    // First priority: Check for configured server URLs (for QA/testing environments)
-    const configured_server_url = (LocalStorageUtils.getValue(LocalStorageConstants.configServerURL) ||
-        localStorage.getItem('config.server_url')) as string;
+        const config: AuthConfig = {
+            clientId,
+            redirectUri: window.location.origin,
+            scopes: 'trade',
+        };
 
-    const valid_server_urls = ['green.derivws.com', 'red.derivws.com', 'blue.derivws.com', 'canary.derivws.com'];
-
-    if (
-        configured_server_url &&
-        (typeof configured_server_url === 'string'
-            ? !valid_server_urls.includes(configured_server_url)
-            : !valid_server_urls.includes(JSON.stringify(configured_server_url)))
-    ) {
-        original_url.hostname = configured_server_url;
-    } else if (original_url.hostname.includes('oauth.deriv.')) {
-        // Second priority: Domain-based OAuth URL setting for .me and .be domains
-        if (hostname.includes('.deriv.me')) {
-            original_url.hostname = 'oauth.deriv.me';
-        } else if (hostname.includes('.deriv.be')) {
-            original_url.hostname = 'oauth.deriv.be';
-        } else {
-            // Fallback to original logic for other domains
-            const current_domain = getCurrentProductionDomain();
-            if (current_domain) {
-                const domain_suffix = current_domain.replace(/^[^.]+\./, '');
-                original_url.hostname = `oauth.${domain_suffix}`;
+        // Static referral link (fallback for direct visits without affiliate click)
+        const referralLink = process.env.NEXT_PUBLIC_DERIV_REFERRAL_LINK;
+        if (referralLink) {
+            const referral = parseReferralLink(referralLink);
+            if (referral) {
+                config.affiliateToken = referral.affiliateToken;
+                config.affiliateTokenParam = referral.affiliateTokenParam;
+                config.utmCampaign = referral.utmCampaign;
+                if (referral.utmSource) config.utmSource = referral.utmSource;
+                if (referral.utmMedium) config.utmMedium = referral.utmMedium;
             }
         }
+
+        // Override with live per-click params from landing URL (e.g. Scaleo t= token)
+        const landing = parseLandingParams();
+        if (landing) {
+            // Only override the token when the landing URL actually carries one
+            // (t=). parseLandingParams returns non-null for any utm_* param, so an
+            // unguarded write would clobber a valid env token with '' on generic
+            // marketing links (e.g. ?utm_source=google with no t=).
+            if (landing.affiliateToken) {
+                config.affiliateToken = landing.affiliateToken;
+                config.affiliateTokenParam = landing.affiliateTokenParam;
+            }
+            if (landing.utmSource) config.utmSource = landing.utmSource;
+            if (landing.utmMedium) config.utmMedium = landing.utmMedium;
+            if (landing.utmCampaign) config.utmCampaign = landing.utmCampaign;
+        }
+
+        // If we still have no token and the referral link is a Scaleo click link,
+        // resolve a fresh per-user token via the BFF proxy (non-blocking).
+        if (!config.affiliateToken && referralLink) {
+            const resolved = await resolveReferralViaProxy(referralLink);
+            if (resolved) {
+                config.affiliateToken = resolved.affiliateToken;
+                config.affiliateTokenParam = resolved.affiliateTokenParam;
+                if (resolved.utmSource) config.utmSource = resolved.utmSource;
+                if (resolved.utmMedium) config.utmMedium = resolved.utmMedium;
+                if (resolved.utmCampaign) config.utmCampaign = resolved.utmCampaign;
+            }
+        }
+
+        if (prompt === 'registration') {
+            return await buildSignUpUrl(config);
+        }
+        return await buildAuthorizationUrl(config);
+    } catch (error) {
+        console.error('Error generating OAuth URL:', error);
+        return '';
     }
-    return original_url.toString() || oauth_url;
 };

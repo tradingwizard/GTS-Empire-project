@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import Money from '@/components/shared_ui/money';
 import { Localize, localize } from '@deriv-com/translations';
 

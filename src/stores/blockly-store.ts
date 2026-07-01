@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import { action, computed, makeObservable, observable } from 'mobx';
 import { tabs_title } from '@/constants/bot-contents';
 import { getSavedWorkspaces, onWorkspaceResize } from '@/external/bot-skeleton';

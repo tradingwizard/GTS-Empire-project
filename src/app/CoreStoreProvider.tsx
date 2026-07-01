@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import Cookies from 'js-cookie';
 import { observer } from 'mobx-react-lite';
-import { getDecimalPlaces, toMoment } from '@/components/shared';
+import { toMoment } from '@/components/shared';
 import { FORM_ERROR_MESSAGES } from '@/components/shared/constants/form-error-messages';
 import { initFormErrorMessages } from '@/components/shared/utils/validation/declarative-validation-rules';
 import { api_base } from '@/external/bot-skeleton';
-import { CONNECTION_STATUS } from '@/external/bot-skeleton/services/api/observables/connection-status-stream';
-import { useOauth2 } from '@/hooks/auth/useOauth2';
 import { useApiBase } from '@/hooks/useApiBase';
+import { useLogout } from '@/hooks/useLogout';
 import { useStore } from '@/hooks/useStore';
-import useTMB from '@/hooks/useTMB';
-import { TLandingCompany, TSocketResponseData } from '@/types/api-types';
-import { debugAuth } from '@/utils/auth-debug';
-import type { Balance } from '@deriv/api-types';
-import { localize, useTranslations } from '@deriv-com/translations';
+import { TSocketResponseData } from '@/types/api-types';
+import { clearInvalidTokenParams } from '@/utils/url-utils';
+import { useTranslations } from '@deriv-com/translations';
 
 type TClientInformation = {
     loginid?: string;
@@ -24,7 +21,6 @@ type TClientInformation = {
     last_name?: string;
     preferred_language?: string | null;
     user_id?: number | string;
-    landing_company_shortcode?: string;
 };
 const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ children }) => {
     const currentDomain = useMemo(() => '.' + window.location.hostname.split('.').slice(-2).join('.'), []);
@@ -32,160 +28,29 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
 
     const appInitialization = useRef(false);
     const accountInitialization = useRef(false);
-    const authAttempted = useRef(false);
     const timeInterval = useRef<NodeJS.Timeout | null>(null);
     const msg_listener = useRef<{ unsubscribe: () => void } | null>(null);
     const { client, common } = useStore() ?? {};
 
     const { currentLang } = useTranslations();
 
-    const { oAuthLogout } = useOauth2({ handleLogout: async () => client.logout(), client });
-
-    const { is_tmb_enabled: tmb_enabled_from_hook } = useTMB();
-
-    const is_tmb_enabled = useMemo(
-        () => window.is_tmb_enabled === true || tmb_enabled_from_hook,
-        [tmb_enabled_from_hook]
-    );
-
-    const isLoggedOutCookie = Cookies.get('logged_state') === 'false' && !is_tmb_enabled;
-
-    useEffect(() => {
-        if (isLoggedOutCookie && client?.is_logged_in) {
-            debugAuth('core-store.logout-attempted', {
-                source: 'CoreStoreProvider.loggedOutCookie',
-                client_is_logged_in: client?.is_logged_in,
-            });
-            oAuthLogout();
-        }
-    }, [isLoggedOutCookie, oAuthLogout, client?.is_logged_in]);
+    const handleLogout = useLogout();
 
     const activeAccount = useMemo(
         () => accountList?.find(account => account.loginid === activeLoginid),
         [activeLoginid, accountList]
     );
 
-    // Keep the all-accounts balance map in sync with the latest account list.
-    // The new Deriv platform's authenticated socket is per-account and only emits
-    // live balance updates for the *active* account, so the non-active accounts
-    // would otherwise keep showing their stale login-time balance. The account
-    // list is refreshed from REST on every authorize (login, account switch, and
-    // reconnect) with up-to-date balances, so we mirror those values into the map
-    // here. This refreshes the non-active accounts and re-seeds the active one;
-    // the live balance stream (handled below) then keeps the active account
-    // current after this runs. This effect only runs when the account list /
-    // active account changes (never on a live balance tick), so it can never
-    // clobber a fresher live balance with stale data.
     useEffect(() => {
-        if (!client || !accountList?.length) return;
-
-        const existing_accounts = client.all_accounts_balance?.accounts ?? {};
-        const accounts: NonNullable<Balance['accounts']> = { ...existing_accounts };
-        let has_changes = false;
-
-        accountList.forEach(account => {
-            const account_loginid = account?.loginid;
-            if (!account_loginid) return;
-            const account_balance = Number((account as { balance?: number })?.balance ?? 0);
-            const account_currency = account?.currency ?? '';
-            const existing = accounts[account_loginid];
-
-            // Skip accounts whose balance and currency already match the latest
-            // account list to avoid needless re-renders.
-            if (existing && existing.balance === account_balance && existing.currency === account_currency) {
-                return;
-            }
-
-            accounts[account_loginid] = {
-                ...existing,
-                balance: account_balance,
-                converted_amount: account_balance,
-                currency: account_currency,
-                demo_account: account?.is_virtual ? 1 : 0,
-                status: 1,
-                type: 'deriv',
-            };
-            has_changes = true;
-        });
-
-        if (has_changes) {
-            const active_entry = accounts[activeLoginid ?? ''];
-            client.setAllAccountsBalance({
-                ...client.all_accounts_balance,
-                accounts,
-                balance: active_entry?.balance ?? client.all_accounts_balance?.balance ?? 0,
-                currency: active_entry?.currency ?? client.all_accounts_balance?.currency ?? '',
-                loginid: activeLoginid ?? client.all_accounts_balance?.loginid ?? '',
-            });
-        }
-    }, [accountList, activeLoginid, client]);
-
-    useEffect(() => {
-        const currentBalanceData = client?.all_accounts_balance?.accounts?.[activeAccount?.loginid ?? ''];
-        if (currentBalanceData) {
-            client?.setBalance(currentBalanceData.balance.toFixed(getDecimalPlaces(currentBalanceData.currency)));
-            client?.setCurrency(currentBalanceData.currency);
-        }
-
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [activeAccount?.loginid, client?.all_accounts_balance]);
-
-    useEffect(() => {
-        if (client && activeAccount) {
+        if (client && activeAccount && isAuthorized) {
             client?.setLoginId(activeLoginid);
             client?.setAccountList(accountList);
             client?.setIsLoggedIn(true);
-            debugAuth('core-store.login-state-hydrated', {
-                active_loginid: activeLoginid || null,
-                account_list_count: accountList?.length ?? 0,
-                client_is_logged_in: true,
-            });
+        } else if (client && !isAuthorized) {
+            // Ensure client shows as not logged in until authorization is complete
+            client?.setIsLoggedIn(false);
         }
-    }, [accountList, activeAccount, activeLoginid, client]);
-
-    useEffect(() => {
-        debugAuth('core-store.login-state-check', {
-            is_authorizing: isAuthorizing,
-            is_authorized: isAuthorized,
-            connection_status: connectionStatus,
-            account_list_count: accountList?.length ?? 0,
-            active_loginid: activeLoginid || null,
-            active_account_exists: Boolean(activeAccount),
-            client_is_logged_in: client?.is_logged_in ?? null,
-        });
-    }, [isAuthorizing, isAuthorized, connectionStatus, accountList?.length, activeLoginid, activeAccount, client?.is_logged_in]);
-
-    // Surface a clear, actionable error if a logged-in user's authorization
-    // finished without success, instead of leaving a blank/non-working page.
-    useEffect(() => {
-        if (!common) return;
-        if (isAuthorizing) {
-            authAttempted.current = true;
-            return;
-        }
-        const has_token = !!localStorage.getItem('authToken');
-        const is_logged_in_cookie = Cookies.get('logged_state') === 'true';
-
-        if (isAuthorized) {
-            if (common.has_error) common.setError(false, {});
-            return;
-        }
-
-        if (authAttempted.current && has_token && is_logged_in_cookie && !common.has_error) {
-            common.setError(true, {
-                header: localize('We could not connect to your account'),
-                message: localize(
-                    'Something went wrong while loading your trading account. Please check your connection and try again.'
-                ),
-                redirect_label: localize('Try again'),
-                redirectOnClick: () => {
-                    window.location.reload();
-                },
-                should_clear_error_on_click: true,
-                type: 'error',
-            });
-        }
-    }, [isAuthorizing, isAuthorized, common]);
+    }, [accountList, activeAccount, activeLoginid, client, isAuthorized]);
 
     useEffect(() => {
         initFormErrorMessages(FORM_ERROR_MESSAGES());
@@ -203,9 +68,17 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
         }
     }, [currentLang, common]);
 
+    // Type-safe interface for API with time() method
+    interface ApiWithTime {
+        time(): Promise<TSocketResponseData<'time'>>;
+    }
+
     useEffect(() => {
         const updateServerTime = () => {
-            api_base.api
+            // Fixed type safety: replaced 'as any' with proper interface and runtime check
+            // Ensures time() method exists before calling it
+            if (!api_base.api || !('time' in api_base.api)) return;
+            (api_base.api as ApiWithTime)
                 .time()
                 .then((res: TSocketResponseData<'time'>) => {
                     common.setServerTime(toMoment(res.time), false);
@@ -221,21 +94,9 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
             timeInterval.current = null;
         }
 
-        // Only setup the interval if the connection is open and we have access to the API
-        if (client && connectionStatus === CONNECTION_STATUS.OPENED && api_base?.api) {
-            if (!appInitialization.current) {
-                appInitialization.current = true;
-                api_base.api
-                    ?.websiteStatus()
-                    .then((res: TSocketResponseData<'website_status'>) => {
-                        client.setWebsiteStatus(res.website_status);
-                    })
-                    .catch(() => {
-                        // website_status is not part of the new platform's WS
-                        // protocol for logged-out users; ignore so it never
-                        // becomes an unhandled rejection.
-                    });
-            }
+        if (client && !appInitialization.current) {
+            if (!api_base?.api) return;
+            appInitialization.current = true;
 
             // Initial time update
             updateServerTime();
@@ -251,58 +112,51 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
                 timeInterval.current = null;
             }
         };
-    }, [client, common, is_tmb_enabled, connectionStatus]);
+    }, [client, common]);
 
     const handleMessages = useCallback(
-        async (res: Record<string, unknown>) => {
+        // Changed parameter type from Record<string, unknown> to unknown to match onMessage signature
+        async (res: unknown) => {
             if (!res) return;
-            const data = res.data as TSocketResponseData<'balance'>;
+            const data = (res as Record<string, unknown>).data as TSocketResponseData<'balance'>;
             const { msg_type, error } = data;
 
-            if (msg_type === 'authorize' && (error?.code === 'DisabledClient' || error?.code === 'InvalidToken')) {
-                debugAuth('core-store.logout-attempted', {
-                    source: 'CoreStoreProvider.authorizeMessage',
-                    error_code: error?.code,
-                    msg_type,
-                });
-                await oAuthLogout();
+            // Handle auth errors by calling client.logout() directly instead of useLogout hook
+            // This prevents redundant logout operations since useLogout internally calls client.logout()
+            if (
+                error?.code === 'AuthorizationRequired' ||
+                error?.code === 'DisabledClient' ||
+                error?.code === 'InvalidToken'
+            ) {
+                // Clear all URL query parameters for these auth errors
+                clearInvalidTokenParams();
+                // Call client store logout directly to avoid double logout
+                await client?.logout();
             }
 
             if (msg_type === 'balance' && data && !error) {
                 const balance = data.balance;
-                if (balance?.accounts) {
-                    client.setAllAccountsBalance(balance);
-                } else if (balance && typeof balance.balance === 'number') {
-                    // The new platform's per-account socket sends a balance for
-                    // a single account and may omit the loginid; fall back to
-                    // the active account so its balance stays live.
-                    const target_loginid = balance.loginid || activeLoginid;
-                    if (!client?.all_accounts_balance?.accounts || !target_loginid) return;
-                    const accounts = { ...client.all_accounts_balance.accounts };
-                    const currentLoggedInBalance = { ...accounts[target_loginid] };
-                    currentLoggedInBalance.balance = balance.balance;
-                    if (balance.currency) {
-                        currentLoggedInBalance.currency = balance.currency;
-                    }
+                if (balance && typeof balance.balance === 'number') {
+                    client.setBalance(balance.balance.toString());
 
-                    const updatedAccounts = {
-                        ...client.all_accounts_balance,
-                        accounts: {
-                            ...client.all_accounts_balance.accounts,
-                            [target_loginid]: currentLoggedInBalance,
-                        },
-                    };
-                    client.setAllAccountsBalance(updatedAccounts);
+                    if (balance.currency) {
+                        client.setCurrency(balance.currency);
+                    }
                 }
             }
         },
-        [client, oAuthLogout, activeLoginid]
+        // Fixed memory leak: removed handleLogout from deps as it's not used in function body
+        // Only client is actually referenced (line 129), preventing unnecessary re-subscriptions
+        [client]
     );
 
     useEffect(() => {
         if (!isAuthorizing && client) {
             const subscription = api_base?.api?.onMessage().subscribe(handleMessages);
-            msg_listener.current = { unsubscribe: subscription?.unsubscribe };
+            // Fixed unsubscribe type - only store if subscription exists
+            if (subscription) {
+                msg_listener.current = { unsubscribe: subscription.unsubscribe };
+            }
         }
 
         return () => {
@@ -315,58 +169,27 @@ const CoreStoreProvider: React.FC<{ children: React.ReactNode }> = observer(({ c
     useEffect(() => {
         if (!isAuthorizing && isAuthorized && !accountInitialization.current && client) {
             accountInitialization.current = true;
-            api_base.api
-                .getSettings()
-                .then((settingRes: TSocketResponseData<'get_settings'>) => {
-                    client?.setAccountSettings(settingRes.get_settings);
-                    const client_information: TClientInformation = {
-                        loginid: activeAccount?.loginid,
-                        email: settingRes.get_settings?.email,
-                        currency: client?.currency,
-                        residence: settingRes.get_settings?.residence,
-                        first_name: settingRes.get_settings?.first_name,
-                        last_name: settingRes.get_settings?.last_name,
-                        preferred_language: settingRes.get_settings?.preferred_language,
-                        user_id: ((api_base.account_info as any)?.user_id as number) || activeLoginid,
-                        landing_company_shortcode: activeAccount?.landing_company_name,
-                    };
+            const client_information: TClientInformation = {
+                loginid: activeAccount?.loginid,
+                email: '',
+                currency: client?.currency,
+                residence: '',
+                first_name: '',
+                last_name: '',
+                preferred_language: '',
+                user_id:
+                    (api_base.account_info &&
+                    typeof api_base.account_info === 'object' &&
+                    'user_id' in api_base.account_info
+                        ? (api_base.account_info as { user_id: number }).user_id
+                        : null) || activeLoginid,
+            };
 
-                    Cookies.set('client_information', JSON.stringify(client_information), {
-                        domain: currentDomain,
-                    });
-
-                    api_base.api
-                        .landingCompany({
-                            landing_company: settingRes.get_settings?.country_code,
-                        })
-                        .then((res: TSocketResponseData<'landing_company'>) => {
-                            client?.setLandingCompany(res.landing_company as unknown as TLandingCompany);
-                        })
-                        .catch(() => {
-                            // The new API platform may not support `landing_company`.
-                            // Mark it resolved so the dashboard loader (which is
-                            // gated on is_landing_company_loaded) is never stuck.
-                            client?.setIsLandingCompanyLoaded(true);
-                        });
-                })
-                .catch(error => {
-                    // If account settings fail, the nested landing_company call
-                    // above never runs. Resolve the gate so the dashboard still
-                    // loads instead of hanging on the spinner forever.
-                    console.error('get_settings failed during account init:', error);
-                    client?.setIsLandingCompanyLoaded(true);
-                });
-
-            api_base.api
-                .getAccountStatus()
-                .then((res: TSocketResponseData<'get_account_status'>) => {
-                    client?.setAccountStatus(res.get_account_status);
-                })
-                .catch(() => {
-                    /* get_account_status is non-blocking for boot; ignore */
-                });
+            Cookies.set('client_information', JSON.stringify(client_information), {
+                domain: currentDomain,
+            });
         }
-    }, [isAuthorizing, isAuthorized, client]);
+    }, [isAuthorizing, isAuthorized, client, activeAccount?.loginid, activeLoginid, currentDomain]);
 
     return <>{children}</>;
 });

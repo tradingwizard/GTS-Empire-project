@@ -56,8 +56,9 @@ describe('useInvalidTokenHandler', () => {
     });
 
     afterEach(() => {
-        // Restore original location
-        window.location = originalLocation;
+        // Restore original location (cast to match the mock assignment above; window.location
+        // is typed `string & Location`).
+        window.location = originalLocation as any;
         jest.restoreAllMocks();
     });
 

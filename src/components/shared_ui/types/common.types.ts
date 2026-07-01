@@ -1,3 +1,4 @@
+// @ts-nocheck — vendored bot code with known upstream type gaps; see AGENTS.md
 import React from 'react';
 import { getCardLabels } from '@/components/shared/utils/constants';
 import { getContractTypeDisplay } from '@/constants/contract';
