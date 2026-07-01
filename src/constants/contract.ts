@@ -1,6 +1,5 @@
 import { getTotalProfit, TContractStore } from '@/components/shared';
 import { TContractOptions } from '@/components/shared';
-import { conditionalLocalize, localizeAccumulators } from '@/utils/conditional-localize';
 import { localize } from '@deriv-com/translations';
 
 export type TContract = {
@@ -48,131 +47,131 @@ type TSupportedContracts = {
 
 export const getSupportedContracts = (is_high_low: TContractOptions): TSupportedContracts => ({
     ACCU: {
-        name: localizeAccumulators(),
+        name: localize('Accumulators'),
         position: 'top',
     },
     ASIANU: {
-        name: conditionalLocalize('Asian Up'),
+        name: localize('Asian Up'),
         position: 'top',
     },
     ASIAND: {
-        name: conditionalLocalize('Asian Down'),
+        name: localize('Asian Down'),
         position: 'bottom',
     },
     CALL: {
-        name: is_high_low.isHighLow ? conditionalLocalize('Higher') : conditionalLocalize('Rise'),
+        name: is_high_low.isHighLow ? localize('Higher') : localize('Rise'),
         position: 'top',
     },
     PUT: {
-        name: is_high_low.isHighLow ? conditionalLocalize('Lower') : conditionalLocalize('Fall'),
+        name: is_high_low.isHighLow ? localize('Lower') : localize('Fall'),
         position: 'bottom',
     },
     CALLE: {
-        name: conditionalLocalize('Rise'),
+        name: localize('Rise'),
         position: 'top',
     },
     PUTE: {
-        name: conditionalLocalize('Fall'),
+        name: localize('Fall'),
         position: 'bottom',
     },
     CALLSPREAD: {
-        name: conditionalLocalize('Spread Up'),
+        name: localize('Spread Up'),
         position: 'top',
     },
     PUTSPREAD: {
-        name: conditionalLocalize('Spread Down'),
+        name: localize('Spread Down'),
         position: 'bottom',
     },
     DIGITMATCH: {
-        name: conditionalLocalize('Matches'),
+        name: localize('Matches'),
         position: 'top',
     },
     DIGITDIFF: {
-        name: conditionalLocalize('Differs'),
+        name: localize('Differs'),
         position: 'bottom',
     },
     DIGITEVEN: {
-        name: conditionalLocalize('Even'),
+        name: localize('Even'),
         position: 'top',
     },
     DIGITODD: {
-        name: conditionalLocalize('Odd'),
+        name: localize('Odd'),
         position: 'bottom',
     },
     DIGITOVER: {
-        name: conditionalLocalize('Over'),
+        name: localize('Over'),
         position: 'top',
     },
     DIGITUNDER: {
-        name: conditionalLocalize('Under'),
+        name: localize('Under'),
         position: 'bottom',
     },
     EXPIRYMISS: {
-        name: conditionalLocalize('Ends Outside'),
+        name: localize('Ends Outside'),
         position: 'top',
     },
     EXPIRYRANGE: {
-        name: conditionalLocalize('Ends Between'),
+        name: localize('Ends Between'),
         position: 'bottom',
     },
     LBFLOATCALL: {
-        name: conditionalLocalize('Close-to-Low'),
+        name: localize('Close-to-Low'),
         position: 'top',
     },
     LBFLOATPUT: {
-        name: conditionalLocalize('High-to-Close'),
+        name: localize('High-to-Close'),
         position: 'top',
     },
     LBHIGHLOW: {
-        name: conditionalLocalize('High-to-Low'),
+        name: localize('High-to-Low'),
         position: 'top',
     },
     MULTUP: {
-        name: conditionalLocalize('Up'),
+        name: localize('Up'),
         position: 'top',
     },
     MULTDOWN: {
-        name: conditionalLocalize('Down'),
+        name: localize('Down'),
         position: 'bottom',
     },
     ONETOUCH: {
-        name: conditionalLocalize('Touch'),
+        name: localize('Touch'),
         position: 'top',
     },
     NOTOUCH: {
-        name: conditionalLocalize('No Touch'),
+        name: localize('No Touch'),
         position: 'bottom',
     },
     RANGE: {
-        name: conditionalLocalize('Stays Between'),
+        name: localize('Stays Between'),
         position: 'top',
     },
     UPORDOWN: {
-        name: conditionalLocalize('Goes Outside'),
+        name: localize('Goes Outside'),
         position: 'bottom',
     },
     RESETCALL: {
-        name: conditionalLocalize('Reset Call'),
+        name: localize('Reset Call'),
         position: 'top',
     },
     RESETPUT: {
-        name: conditionalLocalize('Reset Put'),
+        name: localize('Reset Put'),
         position: 'bottom',
     },
     RUNHIGH: {
-        name: conditionalLocalize('Only Ups'),
+        name: localize('Only Ups'),
         position: 'top',
     },
     RUNLOW: {
-        name: conditionalLocalize('Only Downs'),
+        name: localize('Only Downs'),
         position: 'bottom',
     },
     TICKHIGH: {
-        name: conditionalLocalize('High Tick'),
+        name: localize('High Tick'),
         position: 'top',
     },
     TICKLOW: {
-        name: conditionalLocalize('Low Tick'),
+        name: localize('Low Tick'),
         position: 'bottom',
     },
 });

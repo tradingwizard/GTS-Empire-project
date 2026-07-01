@@ -6,7 +6,6 @@ import { TContractInfo } from '@/components/summary/summary-card.types';
 import { popover_zindex } from '@/constants/z-indexes';
 import { getContractTypeName } from '@/external/bot-skeleton';
 import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
-import { getSymbolDisplayNameSync } from '@/utils/symbol-display-name';
 import { LegacyRadioOffIcon, LegacyRadioOnIcon } from '@deriv/quill-icons';
 import { Localize, localize } from '@deriv-com/translations';
 import { MarketIcon } from '../market/market-icon';
@@ -128,9 +127,9 @@ const PopoverContent = ({ contract }: TPopoverContent) => (
                 </div>
             </PopoverItem>
         )}
-        {contract.entry_spot && (
+        {contract.entry_tick && (
             <PopoverItem title={localize('Entry spot')}>
-                <div className='transactions__popover-value'>{contract.entry_spot}</div>
+                <div className='transactions__popover-value'>{contract.entry_tick}</div>
                 {contract.entry_tick_time && (
                     <div className='transactions__popover-value'>
                         {convertDateFormat(
@@ -142,17 +141,17 @@ const PopoverContent = ({ contract }: TPopoverContent) => (
                 )}
             </PopoverItem>
         )}
-        {(contract.exit_spot && contract.exit_tick_time && (
+        {(contract.exit_tick && contract.exit_tick_time && (
             <PopoverItem title={localize('Exit spot')}>
-                <div className='transactions__popover-value'>{contract.exit_spot}</div>
+                <div className='transactions__popover-value'>{contract.exit_tick}</div>
                 <div className='transactions__popover-value'>
                     {convertDateFormat(contract.exit_tick_time, 'YYYY-M-D HH:mm:ss [GMT]', 'YYYY-MM-DD HH:mm:ss [GMT]')}
                 </div>
             </PopoverItem>
         )) ||
-            (contract.exit_spot && (
+            (contract.exit_tick && (
                 <PopoverItem title={localize('Exit time')}>
-                    <div className='transactions__popover-value'>{contract.exit_spot}</div>
+                    <div className='transactions__popover-value'>{contract.exit_tick}</div>
                 </PopoverItem>
             ))}
     </div>
@@ -176,17 +175,8 @@ const Transaction = ({ contract, active_transaction_id, onClickTransaction }: TT
                     <div className='transactions__loader-container'>
                         {contract ? (
                             <TransactionIconWithText
-                                icon={
-                                    <MarketIcon
-                                        type={(contract as any).underlying_symbol || (contract as any).underlying}
-                                    />
-                                }
-                                title={
-                                    contract.display_name ||
-                                    getSymbolDisplayNameSync(
-                                        (contract as any).underlying_symbol || (contract as any).underlying || ''
-                                    )
-                                }
+                                icon={<MarketIcon type={contract.underlying} />}
+                                title={contract.display_name || ''}
                             />
                         ) : (
                             <TransactionIconLoader />
@@ -207,14 +197,14 @@ const Transaction = ({ contract, active_transaction_id, onClickTransaction }: TT
                     <TransactionIconWithText
                         icon={<LegacyRadioOnIcon height={10} width={10} />}
                         title={localize('Entry spot')}
-                        message={contract?.entry_spot ?? <TransactionFieldLoader />}
+                        message={contract?.entry_tick ?? <TransactionFieldLoader />}
                     />
                 </div>
                 <div className='transactions__cell transactions__exit-spot'>
                     <TransactionIconWithText
                         icon={<LegacyRadioOffIcon height={10} width={10} />}
                         title={localize('Exit spot')}
-                        message={contract?.exit_spot ?? <TransactionFieldLoader />}
+                        message={contract?.exit_tick ?? <TransactionFieldLoader />}
                     />
                 </div>
                 <div className='transactions__cell transactions__stake'>

@@ -8,7 +8,6 @@ import { getSetting } from '@/utils/settings';
 import { LegacyClose1pxIcon } from '@deriv/quill-icons/Legacy';
 import { localize } from '@deriv-com/translations';
 import TourButton from '../common/tour-button';
-import { DBOT_TABS } from '@/constants/bot-contents';
 import { DBOT_ONBOARDING_MOBILE, TMobileTourConfig } from '../tour-content';
 
 const default_tour_data = {
@@ -48,7 +47,7 @@ const OnboardingTourMobile = observer(() => {
     React.useEffect(() => {
         const checkTokenForTour = () => {
             const token = getSetting('onboard_tour_token');
-            if (!token && active_tab === DBOT_TABS.DASHBOARD) {
+            if (!token && active_tab === 0) {
                 setActiveTour('onboarding');
             }
         };

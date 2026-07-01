@@ -1,4 +1,4 @@
-// Removed unused React import - React 17+ JSX transform doesn't require it
+import React from 'react';
 import { VerticalStepper } from '@deriv-com/quill-ui';
 import { localize } from '@deriv-com/translations';
 import { LinearProgressBar } from '@deriv-com/ui';

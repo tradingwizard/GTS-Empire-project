@@ -12,7 +12,7 @@ import { TAuthData } from '@/types/api-types';
 export const useApiBase = () => {
     const [connectionStatus, setConnectionStatus] = useState<CONNECTION_STATUS>(CONNECTION_STATUS.UNKNOWN);
     const [isAuthorized, setIsAuthorized] = useState<boolean>(false);
-    const [isAuthorizing, setIsAuthorizing] = useState<boolean>(true); // Will be overridden by observable stream which now starts with true
+    const [isAuthorizing, setIsAuthorizing] = useState<boolean>(false);
     const [accountList, setAccountList] = useState<TAuthData['account_list']>([]);
     const [authData, setAuthData] = useState<TAuthData | null>(null);
     const [activeLoginid, setActiveLoginid] = useState<string>('');
@@ -34,14 +34,7 @@ export const useApiBase = () => {
         });
         const authDataSubscription = authData$.subscribe(authData => {
             setAuthData(authData);
-            const isLegacy = localStorage.getItem('is_legacy_account') === 'true';
-            const isMarketingMode = localStorage.getItem('marketing_mode_active') === 'true' && isLegacy;
-            if (isMarketingMode) {
-                const selectedLoginid = localStorage.getItem('active_loginid') || authData?.loginid || '';
-                setActiveLoginid(selectedLoginid);
-            } else {
-                setActiveLoginid(authData?.loginid ?? '');
-            }
+            setActiveLoginid(authData?.loginid ?? '');
         });
 
         return () => {
@@ -53,5 +46,5 @@ export const useApiBase = () => {
         };
     }, []);
 
-    return { connectionStatus, isAuthorized, isAuthorizing, accountList, authData, activeLoginid, setIsAuthorizing };
+    return { connectionStatus, isAuthorized, isAuthorizing, accountList, authData, activeLoginid };
 };

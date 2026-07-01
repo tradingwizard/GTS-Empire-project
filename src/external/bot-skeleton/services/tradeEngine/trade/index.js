@@ -1,6 +1,6 @@
 import { applyMiddleware, createStore } from 'redux';
 import { thunk } from 'redux-thunk';
-import { getLocalizedErrorMessage } from '@/constants/backend-error-messages';
+import { localize } from '@deriv-com/translations';
 import { createError } from '../../../utils/error';
 import { observer as globalObserver } from '../../../utils/observer';
 import { api_base } from '../../api/api-base';
@@ -90,7 +90,7 @@ export default class TradeEngine extends Balance(Purchase(Sell(OpenContract(Prop
 
     start(tradeOptions) {
         if (!this.options) {
-            throw createError('NotInitialized', getLocalizedErrorMessage('NotInitialized'));
+            throw createError('NotInitialized', localize('Bot.init is not called'));
         }
 
         globalObserver.emit('bot.running');

@@ -55,17 +55,5 @@
                 margin-bottom: unset;
             }
         }
-
-        .dc-btn--primary {
-            background-color: #0f172a !important;
-            border-color: #0f172a !important;
-            color: #ffffff !important;
-
-            body.theme--dark & {
-                background-color: #ffffff !important;
-                border-color: #ffffff !important;
-                color: #0f172a !important;
-            }
-        }
     }
 }

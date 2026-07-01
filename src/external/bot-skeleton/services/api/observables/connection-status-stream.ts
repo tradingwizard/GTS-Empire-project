@@ -10,7 +10,7 @@ export enum CONNECTION_STATUS {
 
 // Initial connection status will be 'unknown'
 export const connectionStatus$ = new BehaviorSubject<string>('unknown');
-export const isAuthorizing$ = new BehaviorSubject<boolean>(true); // Start with true to show loader immediately
+export const isAuthorizing$ = new BehaviorSubject<boolean>(false);
 export const isAuthorized$ = new BehaviorSubject<boolean>(false);
 export const account_list$ = new BehaviorSubject<TAuthData['account_list']>([]);
 export const authData$ = new BehaviorSubject<TAuthData | null>(null);
@@ -38,11 +38,7 @@ export const setAccountList = (accountList: TAuthData['account_list']) => {
 // Set the auth data
 export const setAuthData = (authData: TAuthData | null) => {
     if (authData?.loginid) {
-        const isLegacy = localStorage.getItem('is_legacy_account') === 'true';
-        const isMarketingMode = localStorage.getItem('marketing_mode_active') === 'true' && isLegacy;
-        if (!isMarketingMode) {
-            localStorage.setItem('active_loginid', authData.loginid);
-        }
+        localStorage.setItem('active_loginid', authData.loginid);
     }
     authData$.next(authData);
 };

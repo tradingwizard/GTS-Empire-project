@@ -1,6 +1,3 @@
-@use 'components/shared/styles/constants' as *;
-@use 'components/shared/styles/mixins' as *;
-
 .db-toolbox {
     position: absolute;
     top: 0;
@@ -78,7 +75,7 @@
     &__content {
         display: flex;
         flex-direction: column;
-      //overflow: hidden;
+        overflow: hidden;
         user-select: none;
         z-index: 1;
         visibility: visible;
@@ -87,14 +84,10 @@
 
     &__content-wrapper {
         height: 0;
-        display: flex;
-        flex-direction: column;
-      //overflow: hidden;
     }
 
     &__content-wrapper.active {
-        flex: 1;
-        height: auto;
+        height: 100%;
     }
 
     &__header {
@@ -107,15 +100,27 @@
         background-color: var(--general-section-5);
     }
 
-    &__buttons {
+    &__item {
         display: flex;
-        flex-direction: column;
-        gap: 0.8rem;
-        margin-bottom: 1.6rem;
+        flex-direction: row;
+        color: var(--text-general);
 
-        .toolbar__btn {
-            width: 100% !important;
-            justify-content: flex-start;
+        &:hover {
+            background-color: var(--general-hover);
+            color: var(--text-prominent);
+        }
+    }
+
+    &__category-arrow {
+        width: 16px;
+        height: 16px;
+        margin-right: $category-text-spacing;
+        transition: transform 0.3s ease;
+        position: relative;
+
+        &--active {
+            transform: rotate(180deg);
+            top: 0.5rem;
         }
     }
 
@@ -146,7 +151,6 @@
     &__row {
         cursor: pointer;
         border-top: 1px solid var(--general-section-6);
-        user-select: none; // Prevent text selection on rapid clicks
 
         #{$toolbox}__category--selected {
             background-color: var(--general-active);
@@ -159,10 +163,40 @@
         &--active {
             background-color: var(--general-hover);
         }
+    }
 
-        &--pending {
-            background-color: var(--general-active);
-            opacity: 0.8;
+    &__button.dc-btn {
+        margin: 16px auto;
+        padding: 0;
+        width: 152px;
+        height: 32px;
+        color: var(--text-colored-background);
+        font-size: 14px;
+        font-weight: bold;
+        line-height: 1.4;
+    }
+
+    &__sub-category {
+        &-row {
+            padding: 1rem;
+            cursor: pointer;
+
+            &:hover {
+                background-color: var(--general-hover);
+            }
+
+            &--active {
+                background-color: var(--general-hover);
+            }
         }
     }
+}
+
+.loader {
+    border: 1px solid var(--general-active);
+    border-top: 1px solid var(--brand-secondary);
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    animation: spin 1s linear infinite;
 }

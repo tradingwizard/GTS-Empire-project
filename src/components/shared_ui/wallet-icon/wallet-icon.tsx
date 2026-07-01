@@ -1,4 +1,4 @@
-// Removed unused React import - React 17+ JSX transform doesn't require it
+import React from 'react';
 import classNames from 'classnames';
 import { WalletIconList } from './wallet-icons-list';
 import './wallet-icon.scss';

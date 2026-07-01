@@ -1,4 +1,4 @@
-// Removed unused React import - React 17+ JSX transform doesn't require it
+import React from 'react';
 import { render, screen } from '@testing-library/react';
 import ErrorModal from '../error-modal';
 

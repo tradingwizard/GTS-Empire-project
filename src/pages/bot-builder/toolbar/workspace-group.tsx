@@ -15,8 +15,7 @@ import {
 } from '@deriv/quill-icons/LabelPaired';
 import { localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
-/* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-/* [/AI] */
+import { rudderStackSendOpenEvent } from '../../../analytics/rudderstack-common-events';
 import ToolbarIcon from './toolbar-icon';
 
 const WorkspaceGroup = observer(() => {
@@ -53,16 +52,19 @@ const WorkspaceGroup = observer(() => {
                             onClick={() => {
                                 setPreviewOnPopup(true);
                                 toggleLoadModal();
-                                /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-                                /* [/AI] */
+                                rudderStackSendOpenEvent({
+                                    subpage_name: 'bot_builder',
+                                    subform_source: 'bot_builder',
+                                    subform_name: 'load_strategy',
+                                    load_strategy_tab: 'recent',
+                                });
                             }}
                         >
                             <LabelPairedFolderOpenMdRegularIcon />
                         </span>
                     }
                 />
-                {/* [AI] - Saving disabled as per user request to prevent strategy downloads */}
-                {/* <ToolbarIcon
+                <ToolbarIcon
                     popover_message={localize('Save')}
                     icon={
                         <span
@@ -74,8 +76,7 @@ const WorkspaceGroup = observer(() => {
                             <LabelPairedFloppyDiskMdRegularIcon />
                         </span>
                     }
-                /> */}
-                {/* [/AI] */}
+                />
                 <ToolbarIcon
                     popover_message={localize('Sort blocks')}
                     icon={

@@ -27,9 +27,7 @@ export default Engine =>
                         this.updateTotals(contract);
                         contractStatus({
                             id: 'contract.sold',
-                            data: contract.transaction_ids
-                                ? contract.transaction_ids.sell
-                                : contract.transaction_id || '',
+                            data: contract.transaction_ids.sell,
                             contract,
                         });
 

@@ -13,7 +13,7 @@ export const D_ALEMBERT = (): TDescriptionItem[] => [
         type: 'text',
         content: [
             localize(
-                `${localize('The')} D'Alembert ${localize('strategy involves increasing your stake after a losing trade and reducing it after a successful trade by a predetermined number of units.')}`
+                "The D'Alembert strategy involves increasing your stake after a losing trade and reducing it after a successful trade by a predetermined number of units."
             ),
         ],
     },
@@ -98,7 +98,7 @@ export const D_ALEMBERT = (): TDescriptionItem[] => [
         type: 'text',
         content: [
             localize(
-                `${localize('The')} D'Alembert ${localize('strategy is less risky than')} Martingale, ${localize('but you can still determine how long your funds will last with this strategy before trading. Simply use this formula.')}`
+                'The D’Alembert strategy is less risky than Martingale, but you can still determine how long your funds will last with this strategy before trading. Simply use this formula.'
             ),
         ],
     },
@@ -166,7 +166,7 @@ export const D_ALEMBERT = (): TDescriptionItem[] => [
         type: 'text',
         content: [
             localize(
-                `${localize('The')} D'Alembert ${localize('system offers more balanced trading through controlled stake progression. With prudent risk management like stake limits, it can be effectively automated in Deriv Bot. However, traders should thoroughly assess their risk appetite, test strategies on a demo account to align with their trading style before trading with real money. This allows optimising the approach and striking a balance between potential gains and losses whilst managing risk.')}`
+                "The D'Alembert system offers more balanced trading through controlled stake progression. With prudent risk management like stake limits, it can be effectively automated in Deriv Bot. However, traders should thoroughly assess their risk appetite, test strategies on a demo account to align with their trading style before trading with real money. This allows optimising the approach and striking a balance between potential gains and losses whilst managing risk."
             ),
         ],
     },

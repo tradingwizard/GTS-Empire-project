@@ -12,26 +12,20 @@ export default class BlocklyStore {
             is_loading: observable,
             active_tab: observable,
             _has_saved_bots: observable,
-            workspace_has_blocks: observable,
             has_active_bot: computed,
             has_saved_bots: computed,
             setLoading: action,
             setActiveTab: action,
             checkForSavedBots: action,
-            setHasActiveBot: action,
         });
         this.root_store = root_store;
     }
 
     is_loading = false;
     active_tab = tabs_title.WORKSPACE;
-    workspace_has_blocks = false;
 
     // Computed property to check if there's an active bot
     get has_active_bot(): boolean {
-        // Use the observable if it's been updated, otherwise fallback to direct check
-        if (this.workspace_has_blocks) return true;
-
         // Check if there's an active bot in the workspace
         const workspace = window.Blockly?.derivWorkspace;
         if (!workspace) return false;
@@ -40,10 +34,6 @@ export default class BlocklyStore {
         const top_blocks = workspace.getTopBlocks();
         return top_blocks && top_blocks.length > 0;
     }
-
-    setHasActiveBot = (has_blocks: boolean): void => {
-        this.workspace_has_blocks = has_blocks;
-    };
 
     // Computed property to check if there are saved bots
     get has_saved_bots(): boolean {

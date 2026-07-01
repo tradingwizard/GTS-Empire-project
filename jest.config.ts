@@ -31,7 +31,7 @@ const config: Config = {
     coveragePathIgnorePatterns: ['/node_modules/'],
 
     // Indicates which provider should be used to instrument code for coverage
-    coverageProvider: 'v8', // faster and avoids babel-plugin-istanbul
+    // coverageProvider: "babel",
 
     // A list of reporter names that Jest uses when writing coverage reports
     // coverageReporters: [
@@ -83,15 +83,14 @@ const config: Config = {
         'react-dom/server': '<rootDir>/__mocks__/react-dom-server.js',
         '@deriv-com/translations': '<rootDir>/__mocks__/translation.mock.js',
         '@deriv-com/ui': '<rootDir>/node_modules/@deriv-com/ui',
+        '@deriv-com/auth-client': '<rootDir>/node_modules/@deriv-com/auth-client',
         '^@/external/(.*)$': '<rootDir>/src/external/$1',
-        '^@/adapters/(.*)$': '<rootDir>/src/adapters/$1',
         '^@/utils/(.*)$': '<rootDir>/src/utils/$1',
         '^@/components/(.*)$': '<rootDir>/src/components/$1',
         '^@/constants/(.*)$': '<rootDir>/src/constants/$1',
         '^@/hooks/(.*)$': '<rootDir>/src/hooks/$1',
         '^@/stores/(.*)$': '<rootDir>/src/stores/$1',
         '^@/pages/(.*)$': '<rootDir>/src/pages/$1',
-        '^@/services/(.*)$': '<rootDir>/src/services/$1',
     },
 
     // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
@@ -175,13 +174,13 @@ const config: Config = {
 
     // A map from regular expressions to paths to transformers
     transform: {
-        '^.+\\.(ts|tsx)$': 'ts-jest',
         '^.+\\.(js|jsx)$': 'babel-jest',
+        '^.+\\.tsx?$': 'babel-jest',
         '^.+\\.xml$': 'jest-transform-stub',
     },
 
     // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
-    transformIgnorePatterns: ['/node_modules/(?!@deriv-com/ui).+\\.js$'],
+    transformIgnorePatterns: ['/node_modules/(?!@deriv-com/ui|@deriv-com/auth-client).+\\.js$'],
 
     // An array of regexp pattern strings that are matched against all modules before the module loader will automatically return a mock for them
     // unmockedModulePathPatterns: undefined,

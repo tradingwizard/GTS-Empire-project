@@ -14,9 +14,9 @@ export type TTransaction = {
     currency: string;
     date_start: string;
     display_name: string;
-    entry_spot: string;
+    entry_tick: string;
     entry_tick_time: string;
-    exit_spot: string;
+    exit_tick: string;
     exit_tick_time: string;
     is_completed: boolean;
     payout: number;
@@ -28,7 +28,7 @@ export type TTransaction = {
         buy: number;
         sell: number;
     };
-    underlying_symbol: string;
+    underlying: string;
 };
 
 export type TTransactions = {

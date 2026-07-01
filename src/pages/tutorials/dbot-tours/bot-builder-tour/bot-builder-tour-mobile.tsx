@@ -7,7 +7,6 @@ import { getSetting } from '@/utils/settings';
 import { localize } from '@deriv-com/translations';
 import TourButton from '../common/tour-button';
 import TourStartDialog from '../common/tour-start-dialog';
-import { DBOT_TABS } from '@/constants/bot-contents';
 import { BOT_BUILDER_MOBILE } from '../tour-content';
 import { highlightLoadModalButton } from '../utils';
 
@@ -37,7 +36,7 @@ const BotBuilderTourMobile = observer(() => {
         if (tour_step === 2) toggleTourLoadModal(true);
         else if (active_tour !== '') toggleTourLoadModal(false);
         const token = getSetting('bot_builder_token');
-        if (!token && active_tab === DBOT_TABS.BOT_BUILDER) {
+        if (!token && active_tab === 1) {
             if (is_open) {
                 setTourDialogVisibility(false);
             } else {

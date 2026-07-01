@@ -37,11 +37,6 @@ const LocalComponent = observer(() => {
     if (loaded_local_file && is_file_supported) {
         return (
             <div className='load-strategy__container load-strategy__container--has-footer'>
-                {!isDesktop && (
-                    <div className='load-strategy__local-footer top-footer'>
-                        <LocalFooter />
-                    </div>
-                )}
                 <div
                     className={classNames('load-strategy__local-preview', {
                         'load-strategy__local-preview--active': active_tab === 1 && active_tour,
@@ -66,6 +61,11 @@ const LocalComponent = observer(() => {
                         </div>
                     </div>
                 </div>
+                {!isDesktop && (
+                    <div className='load-strategy__local-footer'>
+                        <LocalFooter />
+                    </div>
+                )}
             </div>
         );
     }

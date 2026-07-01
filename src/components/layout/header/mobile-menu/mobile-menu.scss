@@ -70,7 +70,6 @@
                 .deriv-toggle-switch {
                     margin-left: auto;
                     margin-right: 1.6rem;
-                    min-width: 4.4rem;
                 }
 
                 &--active {
@@ -138,22 +137,8 @@
         }
     }
 
-    .deriv-drawer,
-    &.deriv-drawer {
-        z-index: 10000 !important;
-    }
-
-    .deriv-drawer__container,
-    &__container {
+    .deriv-drawer__container {
         background: var(--general-main-1);
-        z-index: 10000 !important;
-    }
-
-    .deriv-drawer__overlay,
-    .deriv-drawer-overlay,
-    .deriv-drawer__backdrop,
-    .deriv-drawer-backdrop {
-        z-index: 9999 !important;
     }
 
     &__toggle,

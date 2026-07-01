@@ -15,8 +15,7 @@ import {
 import { LegacyMenuDots1pxIcon, LegacySave1pxIcon } from '@deriv/quill-icons/Legacy';
 import { Localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
-/* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-/* [/AI] */
+import { rudderStackSendDashboardClickEvent } from '../../../analytics/rudderstack-dashboard';
 import { STRATEGY } from '../../../constants/dashboard';
 import './index.scss';
 
@@ -26,21 +25,19 @@ export const CONTEXT_MENU = [
         icon: <LabelPairedPageCircleArrowRightSmRegularIcon fill='var(--text-general)' />,
         label: <Localize i18n_default_text='Open' />,
     },
-    /* [AI] - Saving disabled as per user request to prevent strategy downloads */
-    // {
-    //     type: STRATEGY.SAVE,
-    //     icon: (
-    //         <LegacySave1pxIcon
-    //             fill='var(--text-general)'
-    //             className='icon-general-fill-path'
-    //             iconSize='xs'
-    //             path=''
-    //             opacity={0.8}
-    //         />
-    //     ),
-    //     label: <Localize i18n_default_text='Save' />,
-    // },
-    /* [/AI] */
+    {
+        type: STRATEGY.SAVE,
+        icon: (
+            <LegacySave1pxIcon
+                fill='var(--text-general)'
+                className='icon-general-fill-path'
+                iconSize='xs'
+                path=''
+                opacity={0.8}
+            />
+        ),
+        label: <Localize i18n_default_text='Save' />,
+    },
     {
         type: STRATEGY.DELETE,
         icon: <LabelPairedTrashSmRegularIcon fill='var(--text-general)' />,
@@ -101,15 +98,13 @@ const RecentWorkspace = observer(({ workspace, index }: TRecentWorkspace) => {
     const handleOpen = async () => {
         await loadFileFromRecent();
         setActiveTab(DBOT_TABS.BOT_BUILDER);
-        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-        /* [/AI] */
+        rudderStackSendDashboardClickEvent({ dashboard_click_name: 'open', subpage_name: 'bot_builder' });
     };
 
     const handleSave = () => {
         updateBotName(workspace?.name);
         toggleSaveModal();
-        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-        /* [/AI] */
+        rudderStackSendDashboardClickEvent({ dashboard_click_name: 'save', subpage_name: 'dashboard' });
     };
 
     const viewRecentStrategy = async (type: string) => {
@@ -126,8 +121,7 @@ const RecentWorkspace = observer(({ workspace, index }: TRecentWorkspace) => {
 
             case STRATEGY.DELETE:
                 onToggleDeleteDialog(true);
-                /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-                /* [/AI] */
+                rudderStackSendDashboardClickEvent({ dashboard_click_name: 'delete', subpage_name: 'dashboard' });
                 break;
 
             default:

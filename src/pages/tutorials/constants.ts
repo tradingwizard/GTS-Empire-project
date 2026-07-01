@@ -1,5 +1,4 @@
 import { getImageLocation } from '../../public-path';
-import { localizeAccumulators } from '@/utils/conditional-localize';
 import { localize } from '@deriv-com/translations';
 import { TFaqContent, TGuideContent, TQuickStrategyContent, TUserGuideContent } from './tutorials.types';
 
@@ -12,7 +11,7 @@ export const user_guide_content = (): TUserGuideContent[] => [
         id: 1,
         type: 'Tour',
         subtype: 'OnBoard',
-        content: localize('Get started on Deriv Bot'),
+        content: localize('Get started on Deriv'),
         src: getImageLocation('dbot-onboard-tour.png'),
         search_id: `${USER_GUIDE}-0`,
     },
@@ -20,7 +19,7 @@ export const user_guide_content = (): TUserGuideContent[] => [
         id: 2,
         type: 'Tour',
         subtype: 'BotBuilder',
-        content: localize('Let’s build a bot!'),
+        content: localize('Introduction on trading robots'),
         src: getImageLocation('bot-builder-tour.png'),
         search_id: `${USER_GUIDE}-1`,
     },
@@ -30,7 +29,7 @@ export const guide_content = (): TGuideContent[] => [
     {
         id: 1,
         type: 'DBotVideo',
-        content: localize('An introduction to Deriv Bot'),
+        content: localize('An introduction to Deriv'),
         url: 'https://www.youtube.com/embed/lthEgaIY1uw',
         src: getImageLocation('intro_to_deriv_bot.png'),
         search_id: `${VIDEOS}-0`,
@@ -38,7 +37,7 @@ export const guide_content = (): TGuideContent[] => [
     {
         id: 2,
         type: 'DBotVideo',
-        content: localize('How to build a basic trading bot with Deriv Bot'),
+        content: localize('How to get started on Deriv'),
         url: 'https://www.youtube.com/embed/mnpi2g7YakU',
         src: getImageLocation('build_a_bot.png'),
         search_id: `${VIDEOS}-1`,
@@ -46,7 +45,7 @@ export const guide_content = (): TGuideContent[] => [
     {
         id: 3,
         type: 'DBotVideo',
-        content: `${localize('How to use')} Martingale ${localize('strategy on Deriv Bot')}`,
+        content: localize('Introduction to Martingale on Deriv'),
         url: 'https://www.youtube.com/embed/FSslvF7P00I',
         src: getImageLocation('how_to_use_martingale.jpg'),
         search_id: `${VIDEOS}-2`,
@@ -54,7 +53,7 @@ export const guide_content = (): TGuideContent[] => [
     {
         id: 4,
         type: 'DBotVideo',
-        content: `${localize('Introducing')} ${localizeAccumulators()} ${localize('Options on Deriv Bot: Available for automated trading')}`,
+        content: localize('Introducing Accumulator Options on Deriv: Available for automated trading'),
         url: 'https://www.youtube.com/embed/uMBBmdNaadU',
         src: getImageLocation('introducing_accumulators_on_deriv_bot.png'),
         search_id: `${VIDEOS}-3`,
@@ -63,12 +62,12 @@ export const guide_content = (): TGuideContent[] => [
 
 export const faq_content = (): TFaqContent[] => [
     {
-        title: localize('What is Deriv Bot?'),
+        title: localize('What is GTS Empire?'),
         description: [
             {
                 type: 'text',
                 content: localize(
-                    "Deriv Bot is a web-based strategy builder for trading digital options. It’s a platform where you can build your own automated trading bot using drag-and-drop 'blocks'."
+                    "GTS Empire is a web-based strategy builder for trading digital options. It’s a platform where you can build your own automated trading bot using drag-and-drop 'blocks'."
                 ),
             },
         ],
@@ -149,11 +148,13 @@ export const faq_content = (): TFaqContent[] => [
         search_id: 'faq-3',
     },
     {
-        title: localize('Do you offer pre-built trading bots on Deriv Bot?'),
+        title: localize('Do you offer pre-built trading bots on GTS Empire?'),
         description: [
             {
                 type: 'text',
-                content: `${localize("Yes, you can get started with a pre-built bot using the <strong>Quick strategy</strong> feature. You'll find some of the most popular trading strategies here:")} Martingale, D'Alembert, ${localize('and')} Oscar's Grind. ${localize('Just select the strategy, enter your trade parameters, and your bot will be created for you. You can always tweak the parameters later.')}`,
+                content: localize(
+                    "Yes, you can get started with a pre-built bot using the <strong>Quick strategy</strong> feature. You’ll find some of the most popular trading strategies here: Martingale, D'Alembert, and Oscar's Grind. Just select the strategy, enter your trade parameters, and your bot will be created for you. You can always tweak the parameters later."
+                ),
             },
         ],
         search_id: 'faq-4',
@@ -163,7 +164,9 @@ export const faq_content = (): TFaqContent[] => [
         description: [
             {
                 type: 'text',
-                content: `${localize('A quick strategy is a ready-made strategy that you can use in Deriv Bot. There are 3 quick strategies you can choose from:')} Martingale, D'Alembert, ${localize('and')} Oscar's Grind.`,
+                content: localize(
+                    "A quick strategy is a ready-made strategy that you can use in GTS Empire. There are 3 quick strategies you can choose from: Martingale, D'Alembert, and Oscar's Grind."
+                ),
             },
             {
                 type: 'text',
@@ -209,7 +212,7 @@ export const faq_content = (): TFaqContent[] => [
         search_id: 'faq-6',
     },
     {
-        title: localize('How do I import my own trading bot into Deriv Bot?'),
+        title: localize('How do I import my own trading bot into GTS Empire?'),
         description: [
             {
                 type: 'text',
@@ -291,12 +294,12 @@ export const faq_content = (): TFaqContent[] => [
         search_id: 'faq-9',
     },
     {
-        title: localize('How do I control my losses with Deriv Bot?'),
+        title: localize('How do I control my losses with GTS Empire?'),
         description: [
             {
                 type: 'text',
                 content: localize(
-                    'There are several ways to control your losses with Deriv Bot. Here’s a simple example of how you can implement loss control in your strategy:'
+                    'There are several ways to control your losses with GTS Empire. Here’s a simple example of how you can implement loss control in your strategy:'
                 ),
             },
             {
@@ -370,7 +373,7 @@ export const faq_content = (): TFaqContent[] => [
         search_id: 'faq-10',
     },
     {
-        title: localize('Can I run Deriv Bot on multiple tabs in my web browser?'),
+        title: localize('Can I run GTS Empire on multiple tabs in my web browser?'),
         description: [
             {
                 type: 'text',
@@ -382,11 +385,11 @@ export const faq_content = (): TFaqContent[] => [
         search_id: 'faq-11',
     },
     {
-        title: localize('Can I trade cryptocurrencies on Deriv Bot?'),
+        title: localize('Can I trade cryptocurrencies on GTS Empire?'),
         description: [
             {
                 type: 'text',
-                content: localize("No, we don't offer cryptocurrencies on Deriv Bot."),
+                content: localize("No, we don't offer cryptocurrencies on GTS Empire."),
             },
         ],
         search_id: 'faq-12',
@@ -397,14 +400,14 @@ export const faq_content = (): TFaqContent[] => [
             {
                 type: 'text',
                 content: localize(
-                    "No, we don't. However, you'll find quick strategies on Deriv Bot that'll help you build your own trading bot for free."
+                    "No, we don't. However, you'll find quick strategies on GTS Empire that'll help you build your own trading bot for free."
                 ),
             },
         ],
         search_id: 'faq-13',
     },
     {
-        title: localize('In which countries is Deriv Bot available?'),
+        title: localize('In which countries is GTS Empire available?'),
         description: [
             {
                 type: 'text',
@@ -416,11 +419,11 @@ export const faq_content = (): TFaqContent[] => [
         search_id: 'faq-14',
     },
     {
-        title: localize('If I close my web browser, will Deriv Bot continue to run?'),
+        title: localize('If I close my web browser, will GTS Empire continue to run?'),
         description: [
             {
                 type: 'text',
-                content: localize('No, Deriv Bot will stop running when your web browser is closed.'),
+                content: localize('No, GTS Empire will stop running when your web browser is closed.'),
             },
         ],
         search_id: 'faq-15',
@@ -430,7 +433,9 @@ export const faq_content = (): TFaqContent[] => [
         description: [
             {
                 type: 'text',
-                content: `${localize('Three of the most commonly used strategies in automated trading are')} Martingale, D'Alembert, ${localize('and')} Oscar's Grind — ${localize('you can find them all ready-made and waiting for you in Deriv Bot.')}`,
+                content: localize(
+                    "Three of the most commonly used strategies in automated trading are Martingale, D'Alembert, and Oscar's Grind — you can find them all ready-made and waiting for you in GTS Empire."
+                ),
             },
         ],
         search_id: 'faq-16',
@@ -441,7 +446,7 @@ export const faq_content = (): TFaqContent[] => [
             {
                 type: 'text',
                 content: localize(
-                    '<a href="https://www.youtube.com/watch?v=QdI5zCkO4Gk&t=203s" target="_blank">Watch this video</a> to learn how to build a trading bot on Deriv Bot. Also, <a href="https://deriv.com/academy/blog/posts/how-to-build-a-basic-trading-bot-with-dbot/" target="_blank">check out this blog post</a> on building a trading bot.'
+                    '<a href="https://www.youtube.com/watch?v=QdI5zCkO4Gk&t=203s" target="_blank">Watch this video</a> to learn how to build a trading bot on GTS Empire. Also, <a href="https://deriv.com/academy/blog/posts/how-to-build-a-basic-trading-bot-with-dbot/" target="_blank">check out this blog post</a> on building a trading bot.'
                 ),
             },
         ],
@@ -452,56 +457,53 @@ export const faq_content = (): TFaqContent[] => [
 export const quick_strategy_content = (): TQuickStrategyContent[] => [
     {
         qs_name: 'MARTINGALE',
-        type: `${localize('About')} Martingale`,
+        type: localize('About Martingale'),
         content: [
-            `${localize('Exploring the')} Martingale ${localize('strategy in Deriv Bot')}`,
-            `${localize('An example of')} Martingale ${localize('strategy')}`,
+            localize('Exploring the Martingale strategy in GTS Empire'),
+            localize('An example of Martingale strategy'),
         ],
         search_id: `${QUICK_STRATEGY_GUIDES}-0`,
     },
     {
         qs_name: 'D_ALEMBERT',
-        type: `${localize('About')} D'Alembert`,
+        type: localize("About D'Alembert"),
         content: [
-            `${localize('Exploring the')} D'Alembert ${localize('strategy in Deriv Bot')}`,
-            `${localize('An example of')} D'Alembert ${localize('strategy')}`,
+            localize('Exploring the D’Alembert strategy in GTS Empire'),
+            localize('An example of D’Alembert strategy'),
         ],
         search_id: `${QUICK_STRATEGY_GUIDES}-1`,
     },
     {
         qs_name: 'OSCARS_GRIND',
-        type: `${localize('About')} Oscar's Grind`,
+        type: localize("About Oscar's Grind"),
         content: [
-            `${localize('Exploring the')} Oscar's Grind ${localize('strategy in Deriv Bot')}`,
-            `${localize('An example of')} Oscar's Grind ${localize('strategy')}`,
+            localize('Exploring the Oscar’s Grind strategy in GTS Empire'),
+            localize('An example of Oscar’s Grind strategy'),
         ],
         search_id: `${QUICK_STRATEGY_GUIDES}-2`,
     },
     {
         qs_name: 'REVERSE_MARTINGALE',
-        type: `${localize('About')} Reverse Martingale`,
+        type: localize('About Reverse Martingale'),
         content: [
-            `${localize('Exploring the')} Reverse Martingale ${localize('strategy in Deriv Bot')}`,
-            `${localize('An example of')} Reverse Martingale ${localize('strategy')}`,
+            localize('Exploring the Reverse Martingale strategy in GTS Empire'),
+            localize('An example of Reverse Martingale strategy'),
         ],
         search_id: `${QUICK_STRATEGY_GUIDES}-3`,
     },
     {
         qs_name: 'REVERSE_D_ALEMBERT',
-        type: `${localize('About')} Reverse D'Alembert`,
+        type: localize('About Reverse D’Alembert'),
         content: [
-            `${localize('Exploring the')} Reverse D'Alembert ${localize('strategy in Deriv Bot')}`,
-            `${localize('An example of')} Reverse D'Alembert ${localize('strategy')}`,
+            localize('Exploring the Reverse D’Alembert strategy in GTS Empire'),
+            localize('An example of Reverse D’Alembert strategy'),
         ],
         search_id: `${QUICK_STRATEGY_GUIDES}-4`,
     },
     {
         qs_name: 'STRATEGY_1_3_2_6',
-        type: `${localize('About')} 1-3-2-6`,
-        content: [
-            `${localize('Exploring the')} 1-3-2-6 ${localize('strategy in Deriv Bot')}`,
-            `${localize('An example of')} 1-3-2-6 ${localize('strategy')}`,
-        ],
+        type: localize('About 1-3-2-6'),
+        content: [localize('Exploring the 1-3-2-6 strategy in GTS Empire'), localize('An example of 1-3-2-6 strategy')],
         search_id: `${QUICK_STRATEGY_GUIDES}-5`,
     },
 ];

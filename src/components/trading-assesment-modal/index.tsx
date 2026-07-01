@@ -6,25 +6,30 @@ import Text from '@/components/shared_ui/text';
 import { useStore } from '@/hooks/useStore';
 import { Icon } from '@/utils/tmp/dummy';
 import { Localize, localize } from '@deriv-com/translations';
+import { ContentFlag } from '../shared';
 
 const TradingAssesmentModal: React.FC = observer(() => {
     const store = useStore();
     const { client, ui } = store;
 
-    const { is_trading_experience_incomplete, is_logged_in, accounts, loginid } = client;
+    const { is_trading_experience_incomplete, content_flag, is_logged_in, accounts, loginid } = client;
 
     const { is_trading_assessment_for_new_user_enabled } = ui;
 
     const should_show_trading_assessment_existing_user_form = useMemo(() => {
         return (
-            is_logged_in  &&
+            is_logged_in &&
+            accounts?.[loginid]?.landing_company_name === 'maltainvest' &&
             !is_trading_assessment_for_new_user_enabled &&
-            is_trading_experience_incomplete           
+            is_trading_experience_incomplete &&
+            content_flag !== ContentFlag.LOW_RISK_CR_EU &&
+            content_flag !== ContentFlag.LOW_RISK_CR_NON_EU
         );
     }, [
         is_logged_in,
         is_trading_assessment_for_new_user_enabled,
         is_trading_experience_incomplete,
+        content_flag,
         accounts,
         loginid,
     ]);
@@ -53,7 +58,12 @@ const TradingAssesmentModal: React.FC = observer(() => {
                     text={localize('OK')}
                     primary
                     onClick={() => {
-                        window.location.assign('https://app.deriv.com/account/trading-assessment');
+                        const is_staging = window.location.hostname.includes('staging');
+                        if (is_staging) {
+                            window.location.assign('https://staging-app.deriv.com/account/trading-assessment');
+                        } else {
+                            window.location.assign('https://app.deriv.com/account/trading-assessment');
+                        }
                     }}
                 />
             </Modal.Footer>

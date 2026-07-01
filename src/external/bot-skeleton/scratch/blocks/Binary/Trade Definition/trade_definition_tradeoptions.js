@@ -1,8 +1,6 @@
 import { getCurrencyDisplayCode, getDecimalPlaces } from '@/components/shared';
-import { getLocalizedErrorMessage } from '@/constants/backend-error-messages';
 import { isAuthorizing$ } from '@/external/bot-skeleton/services/api/observables/connection-status-stream';
 import { localize } from '@deriv-com/translations';
-import { DURATIONS } from '../../../../../../components/shared/utils/common-data';
 import { config } from '../../../../constants/config';
 import ApiHelpers from '../../../../services/api/api-helpers';
 import DBotStore from '../../../dbot-store';
@@ -13,6 +11,7 @@ import {
     runIrreversibleEvents,
     setCurrency,
 } from '../../../utils';
+import { isMultipliersAvailable } from '../../../utils/multiplier-utils';
 
 window.Blockly.Blocks.trade_definition_tradeoptions = {
     durations: [],
@@ -249,10 +248,9 @@ window.Blockly.Blocks.trade_definition_tradeoptions = {
     updateAmountLimits() {
         const { account_limits } = ApiHelpers?.instance ?? {};
         if (!account_limits) return;
-        const { currency } = DBotStore.instance.client;
-
+        const { currency, landing_company_shortcode } = DBotStore.instance.client;
         if (isAuthorizing$.getValue()) return;
-        account_limits.getStakePayoutLimits(currency, undefined, this.selected_market).then(limits => {
+        account_limits.getStakePayoutLimits(currency, landing_company_shortcode, this.selected_market).then(limits => {
             const unsupported_trade_types = ['multiplier', 'accumulator'];
             if (unsupported_trade_types.includes(this.selected_trade_type)) return;
             const currency_block = this.getField('CURRENCY_LIST')?.getSourceBlock();
@@ -322,6 +320,10 @@ window.Blockly.Blocks.trade_definition_tradeoptions = {
                 });
             });
         } else if (this.selected_trade_type === 'multiplier' && this.isDescendantOf('trade_definition')) {
+            // Prevent multiplier blocks for restricted clients
+            if (!isMultipliersAvailable()) {
+                return;
+            }
             runIrreversibleEvents(() => {
                 runGroupedEvents(false, () => {
                     const multiplier_block = this.workspace.newBlock('trade_definition_multiplier');
@@ -381,50 +383,32 @@ window.Blockly.Blocks.trade_definition_tradeoptions = {
                 });
             });
         } else {
-            contracts_for
-                .getDurations(this.selected_symbol, this.selected_trade_type)
-                .then(durations => {
-                    // Use fallback if no durations received
-                    if (!durations || durations.length === 0) {
-                        durations = DURATIONS;
-                    }
+            contracts_for.getDurations(this.selected_symbol, this.selected_trade_type).then(durations => {
+                // Keep duration in memory so we can later reference them for validation
+                this.durations = durations;
 
-                    // Keep duration in memory so we can later reference them for validation
-                    this.durations = durations;
+                const duration_field_dropdown = this.getField('DURATIONTYPE_LIST');
+                const duration_input = this.getInput('DURATION');
+                const duration_options = durations.map(duration => [duration.display, duration.unit]);
 
-                    const duration_field_dropdown = this.getField('DURATIONTYPE_LIST');
-                    const duration_input = this.getInput('DURATION');
-                    const duration_options = durations.map(duration => [duration.display, duration.unit]);
+                duration_field_dropdown?.updateOptions(duration_options, {
+                    default_value: should_use_default_unit ? undefined : duration_field_dropdown.getValue(),
+                });
 
-                    duration_field_dropdown?.updateOptions(duration_options, {
-                        default_value: should_use_default_unit ? undefined : duration_field_dropdown.getValue(),
-                    });
+                if (should_update_value && duration_input && duration_input.connection) {
+                    const target_block = duration_input.connection.targetBlock();
 
-                    if (should_update_value && duration_input && duration_input.connection) {
-                        const target_block = duration_input.connection.targetBlock();
+                    if (target_block && target_block.isShadow()) {
+                        const min_duration = durations.find(duration => duration.unit === this.selected_duration);
 
-                        if (target_block && target_block.isShadow()) {
-                            const min_duration = durations.find(duration => duration.unit === this.selected_duration);
-
-                            if (min_duration) {
-                                runIrreversibleEvents(() => {
-                                    target_block.setFieldValue(min_duration.min, 'NUM');
-                                });
-                            }
+                        if (min_duration) {
+                            runIrreversibleEvents(() => {
+                                target_block.setFieldValue(min_duration.min, 'NUM');
+                            });
                         }
                     }
-                })
-                .catch(error => {
-                    // Use fallback on error
-                    this.durations = DURATIONS;
-                    const duration_field_dropdown = this.getField('DURATIONTYPE_LIST');
-                    const duration_options = DURATIONS.map(duration => [duration.display, duration.unit]);
-
-                    duration_field_dropdown?.updateOptions(duration_options, {
-                        default_value: should_use_default_unit ? undefined : duration_field_dropdown.getValue(),
-                    });
-                    console.error('Error fetching durations:', error);
-                });
+                }
+            });
         }
         const {
             workspaces: {
@@ -571,18 +555,18 @@ window.Blockly.Blocks.trade_definition_tradeoptions = {
                 const max_payout = this.amount_limits?.max_payout;
                 const min_stake = this.amount_limits?.min_stake;
                 if (min_stake && input_number < min_stake) {
-                    this.error_message = getLocalizedErrorMessage('InvalidMinStake', {
-                        param1: min_stake,
+                    this.error_message = localize("Please enter a stake amount that's at least {{min_stake}}.", {
+                        min_stake,
                     });
                     return input_number < min_stake;
                 }
                 if (max_payout && input_number > max_payout) {
-                    this.error_message = getLocalizedErrorMessage('PayoutLimitExceeded', {
-                        param1: max_payout,
+                    this.error_message = localize("Please enter a payout amount that's lower than {{max_payout}}.", {
+                        max_payout,
                     });
                     return input_number > max_payout;
                 }
-                this.error_message = getLocalizedErrorMessage('AmountValidationFailed');
+                this.error_message = localize('Amount must be a positive number.');
                 return !isNaN(input_number) && input_number <= 0;
             },
             DURATION: input => {

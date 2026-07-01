@@ -1,11 +1,11 @@
 import { action, computed, makeObservable, observable, reaction } from 'mobx';
 import { formatDate, isEnded } from '@/components/shared';
-import { LogTypes } from '@/external/bot-skeleton';
+import { api_base, LogTypes } from '@/external/bot-skeleton';
 import { ProposalOpenContract } from '@deriv/api-types';
 import { TPortfolioPosition, TStores } from '@deriv/stores/types';
 import { TContractInfo } from '../components/summary/summary-card.types';
 import { transaction_elements } from '../constants/transactions';
-import { getStoredItemsByKey, setStoredItemsByKey } from '../utils/session-storage';
+import { getStoredItemsByKey, getStoredItemsByUser, setStoredItemsByKey } from '../utils/session-storage';
 import RootStore from './root-store';
 
 type TTransaction = {
@@ -26,7 +26,6 @@ export default class TransactionsStore {
         this.root_store = root_store;
         this.core = core;
         this.is_transaction_details_modal_open = false;
-        this.elements = getStoredItemsByKey(this.TRANSACTION_CACHE, {});
         this.disposeReactionsFn = this.registerReactions();
 
         makeObservable(this, {
@@ -49,25 +48,22 @@ export default class TransactionsStore {
     }
     TRANSACTION_CACHE = 'transaction_cache';
 
-    elements: TElement = {};
+    elements: TElement = getStoredItemsByUser(this.TRANSACTION_CACHE, this.core?.client?.loginid, []);
     active_transaction_id: null | number = null;
     recovered_completed_transactions: number[] = [];
     recovered_transactions: number[] = [];
     is_called_proposal_open_contract = false;
     is_transaction_details_modal_open = false;
-
-    getTradeAccount(): string {
-        const isMarketing = localStorage.getItem('marketing_mode_active') === 'true';
-        const active_loginid = this.core?.client?.loginid || localStorage.getItem('active_loginid');
-        if (isMarketing && active_loginid) {
-            return active_loginid;
-        }
-        return this.core?.client?.loginid as string;
-    }
+    // Latest proposal_open_contract data per contract id, received over the live
+    // stream. Replaces the legacy portfolio snapshot for recovering pending
+    // contracts on the new API.
+    open_contracts: Record<number, ProposalOpenContract> = {};
+    // Contract ids we're currently fetching the final state for, so we don't
+    // fire duplicate proposal_open_contract lookups while recovery runs.
+    pending_contract_lookups: Set<number> = new Set();
 
     get transactions(): TTransaction[] {
-        const account = this.getTradeAccount();
-        if (account) return this.elements[account] ?? [];
+        if (this.core?.client?.loginid) return this.elements[this.core?.client?.loginid] ?? [];
         return [];
     }
 
@@ -79,13 +75,7 @@ export default class TransactionsStore {
         );
         const statistics = trxs.reduce(
             (stats, { data }) => {
-                const contract = data as TContractInfo;
-                const profit = Number(contract.profit) || 0;
-                const is_completed = contract.is_completed || false;
-                const buy_price = Number(contract.buy_price) || 0;
-                const payout = Number(contract.payout) || Number(contract.bid_price) || 0;
-                const bid_price = Number(contract.bid_price) || 0;
-
+                const { profit = 0, is_completed = false, buy_price = 0, payout, bid_price } = data as TContractInfo;
                 if (is_completed) {
                     if (profit > 0) {
                         stats.won_contracts += 1;
@@ -117,48 +107,26 @@ export default class TransactionsStore {
     };
 
     onBotContractEvent(data: TContractInfo) {
-        const buy_id = data?.transaction_ids?.buy || (data as any).transaction_id;
-        const contract_id = data?.contract_id || (data as any).id;
-        if (!buy_id && !contract_id) return;
-
-        // Normalize data to ensure transaction_ids is always populated for legacy UI components
-        const normalized_data: TContractInfo = {
-            ...data,
-            contract_id,
-            transaction_ids: data?.transaction_ids || {
-                buy: buy_id,
-                sell: data?.transaction_ids?.sell || (data as any).sell_transaction_id,
-            },
-        };
-        this.pushTransaction(normalized_data);
+        if (data?.contract_id) {
+            this.open_contracts[data.contract_id] = data as ProposalOpenContract;
+        }
+        this.pushTransaction(data);
     }
 
     pushTransaction(data: TContractInfo) {
         const is_completed = isEnded(data as ProposalOpenContract);
         const { run_id } = this.root_store.run_panel;
-        const current_account = this.getTradeAccount();
-
-        const entry_spot_val = data.entry_spot || (data as any).entry_tick;
-        const exit_spot_val = (data as any).exit_spot || (data as any).sell_spot || data.exit_tick;
+        const current_account = this.core?.client?.loginid as string;
 
         const contract: TContractInfo = {
             ...data,
-            entry_spot: entry_spot_val,
-            exit_spot: exit_spot_val,
             is_completed,
             run_id,
             date_start: formatDate(data.date_start, 'YYYY-M-D HH:mm:ss [GMT]'),
-            entry_tick: entry_spot_val,
-            entry_tick_time:
-                (data.entry_tick_time || (data as any).entry_spot_time) &&
-                formatDate(data.entry_tick_time || (data as any).entry_spot_time, 'YYYY-M-D HH:mm:ss [GMT]'),
-            exit_tick: exit_spot_val,
-            exit_tick_time:
-                (data.exit_tick_time || (data as any).sell_spot_time || (data as any).exit_spot_time) &&
-                formatDate(
-                    data.exit_tick_time || (data as any).sell_spot_time || (data as any).exit_spot_time,
-                    'YYYY-M-D HH:mm:ss [GMT]'
-                ),
+            entry_tick: data.entry_tick_display_value,
+            entry_tick_time: data.entry_tick_time && formatDate(data.entry_tick_time, 'YYYY-M-D HH:mm:ss [GMT]'),
+            exit_tick: data.exit_tick_display_value,
+            exit_tick_time: data.exit_tick_time && formatDate(data.exit_tick_time, 'YYYY-M-D HH:mm:ss [GMT]'),
             profit: is_completed ? data.profit : 0,
         };
 
@@ -173,10 +141,8 @@ export default class TransactionsStore {
             if (typeof c.data === 'string') return false;
             return (
                 c.type === transaction_elements.CONTRACT &&
-                (c.data?.contract_id === contract.contract_id ||
-                    (c.data?.transaction_ids &&
-                        contract.transaction_ids &&
-                        c.data.transaction_ids.buy === contract.transaction_ids.buy))
+                c.data?.transaction_ids &&
+                c.data.transaction_ids.buy === data.transaction_ids?.buy
             );
         });
 
@@ -214,23 +180,25 @@ export default class TransactionsStore {
     }
 
     clear() {
-        const current_account = this.getTradeAccount();
-        if (this.elements && this.elements[current_account]?.length > 0) {
-            this.elements[current_account] = [];
+        if (this.elements && this.elements[this.core?.client?.loginid as string]?.length > 0) {
+            this.elements[this.core?.client?.loginid as string] = [];
         }
         this.recovered_completed_transactions = this.recovered_completed_transactions?.slice(0, 0);
         this.recovered_transactions = this.recovered_transactions?.slice(0, 0);
         this.is_transaction_details_modal_open = false;
+        this.open_contracts = {};
+        this.pending_contract_lookups.clear();
     }
 
     registerReactions() {
+        const { client } = this.core;
+
         // Write transactions to session storage on each change in transaction elements.
         const disposeTransactionElementsListener = reaction(
-            () => this.elements[this.getTradeAccount()],
+            () => this.elements[client?.loginid as string],
             elements => {
-                const current_account = this.getTradeAccount();
                 const stored_transactions = getStoredItemsByKey(this.TRANSACTION_CACHE, {});
-                stored_transactions[current_account] = elements?.slice(0, 5000) ?? [];
+                stored_transactions[client.loginid as string] = elements?.slice(0, 5000) ?? [];
                 setStoredItemsByKey(this.TRANSACTION_CACHE, stored_transactions);
             }
         );
@@ -258,8 +226,59 @@ export default class TransactionsStore {
                 this.recovered_transactions.includes(trx?.contract_id)
             )
                 return;
-            this.recoverPendingContractsById(trx.contract_id, contract);
+            if (contract) {
+                // A contract instance was handed to us (live recovery) — use it.
+                this.recoverPendingContractsById(trx.contract_id, contract);
+            } else {
+                // No contract in hand (e.g. after a page refresh): ask the API
+                // for this contract's current/final state and reconcile it.
+                this.fetchAndRecoverContractById(trx.contract_id);
+            }
         });
+    }
+
+    async fetchAndRecoverContractById(contract_id: number) {
+        if (
+            !contract_id ||
+            this.recovered_transactions.includes(contract_id) ||
+            this.pending_contract_lookups.has(contract_id)
+        ) {
+            return;
+        }
+
+        // During an active run the live proposal_open_contract stream already
+        // finalizes contracts, so only reach out to the API for the idle /
+        // post-refresh case. Fall back to any cached contract data otherwise.
+        if (this.root_store.run_panel?.is_running || !api_base?.api || !api_base?.is_authorized) {
+            this.recoverPendingContractsById(contract_id, this.open_contracts[contract_id] ?? null);
+            return;
+        }
+
+        this.pending_contract_lookups.add(contract_id);
+        try {
+            const response = (await api_base.api.send({
+                proposal_open_contract: 1,
+                contract_id,
+            })) as unknown as { proposal_open_contract?: ProposalOpenContract };
+            const contract = response?.proposal_open_contract;
+            if (contract?.contract_id) {
+                const id = Number(contract.contract_id);
+                this.open_contracts[id] = contract;
+                // Only finalize contracts that have actually ended. A contract
+                // that is still open must stay pending so the live
+                // proposal_open_contract stream can finalize it once it settles.
+                if (isEnded(contract)) {
+                    this.recoverPendingContractsById(id, contract);
+                }
+            }
+        } catch (error) {
+            // Best-effort: if we can't fetch the contract's final state, leave it
+            // pending rather than breaking the recovery loop.
+            // eslint-disable-next-line no-console
+            console.error('Failed to recover pending contract', contract_id, error);
+        } finally {
+            this.pending_contract_lookups.delete(contract_id);
+        }
     }
 
     updateResultsCompletedContract(contract: ProposalOpenContract) {
@@ -270,7 +289,14 @@ export default class TransactionsStore {
         if (contract.contract_id !== contract_info?.contract_id) {
             this.onBotContractEvent(contract);
 
-            if (contract.contract_id && !this.recovered_transactions.includes(contract.contract_id)) {
+            // Only mark a contract as recovered once it has ended. Marking an
+            // open contract as recovered would make the live recovery listener
+            // skip it when it later settles, leaving it stuck as pending.
+            if (
+                contract.contract_id &&
+                isEnded(contract) &&
+                !this.recovered_transactions.includes(contract.contract_id)
+            ) {
                 this.recovered_transactions.push(contract.contract_id);
             }
             if (
@@ -290,17 +316,22 @@ export default class TransactionsStore {
 
     sortOutPositionsBeforeAction(positions: TPortfolioPosition[], element_id?: number) {
         positions?.forEach(position => {
-            if (!element_id || (element_id && (position as any).id === element_id)) {
-                const contract_details = position.contract_info as ProposalOpenContract;
+            if (!element_id || (element_id && position.id === element_id)) {
+                const contract_details = position.contract_info;
                 this.updateResultsCompletedContract(contract_details);
             }
         });
     }
 
     async recoverPendingContractsById(contract_id: number, contract: ProposalOpenContract | null = null) {
-        // TODO: need to fix as the portfolio is not available now
-        // const positions = this.core.portfolio.positions;
-        const positions: TPortfolioPosition[] = [];
+        // The legacy portfolio snapshot is no longer available on the new API.
+        // Rebuild the open-positions list from the proposal_open_contract updates
+        // received during this session so pending contracts can still be
+        // reconciled into accurate stats and history.
+        const positions: TPortfolioPosition[] = Object.keys(this.open_contracts).map(id => ({
+            id: Number(id),
+            contract_info: this.open_contracts[Number(id)],
+        })) as TPortfolioPosition[];
 
         if (contract) {
             this.is_called_proposal_open_contract = true;
@@ -310,8 +341,8 @@ export default class TransactionsStore {
         }
 
         if (!this.is_called_proposal_open_contract) {
-            const current_account = this.getTradeAccount();
-            if (current_account) {
+            if (this.core?.client?.loginid) {
+                const current_account = this.core?.client?.loginid;
                 if (!this.elements[current_account]?.length) {
                     this.sortOutPositionsBeforeAction(positions);
                 }

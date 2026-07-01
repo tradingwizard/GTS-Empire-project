@@ -1,13 +1,13 @@
 import { findValueByKeyRecursively, formatTime, getRoundedNumber, isEmptyObject } from '@/components/shared';
-import { getLocalizedErrorMessage } from '@/constants/backend-error-messages';
 import { config } from '@/external/bot-skeleton/constants';
 import { localize } from '@deriv-com/translations';
 import { observer as globalObserver } from '../../../utils/observer';
 import { error as logError } from './broadcast';
 
-export const tradeOptionToProposal = (trade_option, purchase_reference) => {
-    const isLegacy = typeof localStorage !== 'undefined' && localStorage.getItem('is_legacy_account') === 'true';
-    return trade_option.contractTypes.map(type => {
+const isLegacy = () => typeof localStorage !== 'undefined' && localStorage.getItem('is_legacy_account') === 'true';
+
+export const tradeOptionToProposal = (trade_option, purchase_reference) =>
+    trade_option.contractTypes.map(type => {
         const proposal = {
             amount: trade_option.amount,
             basis: trade_option.basis,
@@ -22,13 +22,11 @@ export const tradeOptionToProposal = (trade_option, purchase_reference) => {
             },
             proposal: 1,
         };
-
-        if (isLegacy) {
+        if (isLegacy()) {
             proposal.symbol = trade_option.symbol;
         } else {
             proposal.underlying_symbol = trade_option.symbol;
         }
-
         if (trade_option.prediction !== undefined) {
             proposal.selected_tick = trade_option.prediction;
         }
@@ -49,10 +47,8 @@ export const tradeOptionToProposal = (trade_option, purchase_reference) => {
         }
         return proposal;
     });
-};
 
 export const tradeOptionToBuy = (contract_type, trade_option) => {
-    const isLegacy = typeof localStorage !== 'undefined' && localStorage.getItem('is_legacy_account') === 'true';
     const buy = {
         buy: '1',
         price: trade_option.amount,
@@ -66,13 +62,11 @@ export const tradeOptionToBuy = (contract_type, trade_option) => {
             multiplier: trade_option.multiplier,
         },
     };
-
-    if (isLegacy) {
+    if (isLegacy()) {
         buy.parameters.symbol = trade_option.symbol;
     } else {
         buy.parameters.underlying_symbol = trade_option.symbol;
     }
-
     if (trade_option.prediction !== undefined) {
         buy.parameters.selected_tick = trade_option.prediction;
     }
@@ -163,34 +157,47 @@ const getBackoffDelayInMs = (error_obj, delay_index) => {
     const { TRADE_TYPE_CATEGORY_NAMES } = config();
 
     if (code) {
-        const error_details = {
-            message_type: error.msg_type,
-            delay: next_delay_in_seconds,
-            request: echo_req?.req_id,
-            message: message || localize('The market is closed'),
-            trade_type: TRADE_TYPE_CATEGORY_NAMES?.[selected_trade_type] ?? '',
-        };
-
         switch (code) {
             case 'RateLimit':
-                message_to_print = getLocalizedErrorMessage('RateLimit', error_details);
+                message_to_print = localize(
+                    'You are rate limited for: {{ message_type }}, retrying in {{ delay }}s (ID: {{ request }})',
+                    {
+                        message_type: error.msg_type,
+                        delay: next_delay_in_seconds,
+                        request: echo_req?.req_id,
+                    }
+                );
+
                 break;
             case 'DisconnectError':
-                message_to_print = getLocalizedErrorMessage('DisconnectError', error_details);
+                message_to_print = localize('You are disconnected, retrying in {{ delay }}s', {
+                    delay: next_delay_in_seconds,
+                });
                 break;
             case 'MarketIsClosed':
-                message_to_print = getLocalizedErrorMessage('MarketIsClosed', error_details);
+                message_to_print = localize('{{ message }}, retrying in {{ delay }}s', {
+                    message: message || localize('The market is closed'),
+                    delay: next_delay_in_seconds,
+                });
                 break;
-
+            case 'OpenPositionLimitExceeded':
+                message_to_print = localize(
+                    'You already have an open position for {{ trade_type }} contract type, retrying in {{ delay }}s',
+                    {
+                        delay: next_delay_in_seconds,
+                        trade_type: TRADE_TYPE_CATEGORY_NAMES?.[selected_trade_type] ?? '',
+                    }
+                );
+                break;
             default:
-                message_to_print = getLocalizedErrorMessage('RequestFailed', {
+                message_to_print = localize('Request failed for: {{ message_type }}, retrying in {{ delay }}s', {
                     message_type: msg_type || localize('unknown'),
                     delay: next_delay_in_seconds,
                 });
                 break;
         }
     } else {
-        message_to_print = getLocalizedErrorMessage('RequestFailed', {
+        message_to_print = localize('Request failed for: {{ message_type }}, retrying in {{ delay }}s', {
             message_type: msg_type || localize('unknown'),
             delay: next_delay_in_seconds,
         });
@@ -204,10 +211,10 @@ const getBackoffDelayInMs = (error_obj, delay_index) => {
 export const updateErrorMessage = error => {
     if (error.error?.code === 'InputValidationFailed') {
         if (error.error.details?.duration) {
-            error.error.message = getLocalizedErrorMessage('DurationValidationFailed');
+            error.error.message = localize('Duration must be a positive integer');
         }
         if (error.error.details?.amount) {
-            error.error.message = getLocalizedErrorMessage('AmountValidationFailed');
+            error.error.message = localize('Amount must be a positive number.');
         }
     }
 };
@@ -224,12 +231,14 @@ export const shouldThrowError = (error, errors_to_ignore = []) => {
         'RateLimit',
         'DisconnectError',
         'MarketIsClosed',
+        'OpenPositionLimitExceeded',
     ];
     updateErrorMessage(error);
     const is_ignorable_error = errors_to_ignore
         .concat(default_errors_to_ignore)
         .includes(error?.error?.code ?? error?.name);
 
+    if (error.error?.code === 'OpenPositionLimitExceeded') globalObserver.emit('bot.recoverOpenPositionLimitExceeded');
     return !is_ignorable_error;
 };
 
@@ -244,14 +253,6 @@ export const recoverFromError = (promiseFn, recoverFn, errors_to_ignore, delay_i
                  * `!api_base.is_running` will check the bot status if it is not running it will kick out the control from loop
                  */
                 if (shouldThrowError(error, errors_to_ignore) || (api_base && !api_base.is_running)) {
-                    // Check if this is a position limit exceeded error
-                    if (error?.error?.code === 'OpenPositionLimitExceeded') {
-                        // Emit click_stop event to trigger the stopBot method in run-panel-store
-                        setTimeout(() => {
-                            globalObserver.emit('bot.stop_button_click');
-                        }, 500);
-                    }
-
                     reject(error);
                     return;
                 }
@@ -319,7 +320,7 @@ export const createDetails = contract => {
     const result = profit < 0 ? 'loss' : 'win';
 
     return [
-        contract.transaction_ids ? contract.transaction_ids.buy : contract.transaction_id || '',
+        contract.transaction_ids.buy,
         +contract.buy_price,
         +contract.sell_price,
         profit,

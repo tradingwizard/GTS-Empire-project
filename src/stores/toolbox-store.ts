@@ -1,7 +1,5 @@
 import { action, makeObservable, observable, reaction } from 'mobx';
 import { scrollWorkspace } from '@/external/bot-skeleton';
-import { browserOptimizer } from '@/utils/browser-performance-optimizer';
-import { clickRateLimiter } from '@/utils/click-rate-limiter';
 import GTM from '@/utils/gtm';
 import { TStores } from '@deriv/stores/types';
 import { localize } from '@deriv-com/translations';
@@ -12,10 +10,6 @@ export default class ToolboxStore {
     core: TStores;
     disposeToolboxToggleReaction: (() => void) | undefined = undefined;
     typing_timer: ReturnType<typeof setTimeout> | undefined = undefined;
-    click_debounce_timer: ReturnType<typeof setTimeout> | undefined = undefined;
-    last_clicked_category: string | null = null;
-    workspace_adjust_timer: ReturnType<typeof setTimeout> | undefined = undefined;
-    is_adjusting_workspace = false;
     constructor(root_store: RootStore, core: TStores) {
         makeObservable(this, {
             is_toolbox_open: observable,
@@ -53,10 +47,10 @@ export default class ToolboxStore {
     toolbox_examples: HTMLElement | undefined = undefined;
     is_workspace_scroll_adjusted = false;
 
-    onMount = (toolbox_ref: React.MutableRefObject<string>) => {
+    onMount = (toolbox_ref: React.RefObject<HTMLDivElement>) => {
         this.adjustWorkspace();
 
-        this.toolbox_dom = window.Blockly.utils.xml.textToDom(toolbox_ref?.current as any) as any;
+        this.toolbox_dom = window.Blockly.utils.xml.textToDom(toolbox_ref?.current);
         const el = [...(this.toolbox_dom?.childNodes ?? [])].find(
             el => el instanceof HTMLElement && el.tagName === 'examples'
         );
@@ -66,6 +60,7 @@ export default class ToolboxStore {
             () => this.is_toolbox_open,
             is_toolbox_open => {
                 if (is_toolbox_open) {
+                    //this.adjustWorkspace();
                     // Emit event to GTM
                     GTM?.pushDataLayer?.({ event: 'dbot_toolbox_visible', value: true });
                 }
@@ -77,25 +72,11 @@ export default class ToolboxStore {
         if (typeof this.disposeToolboxToggleReaction === 'function') {
             this.disposeToolboxToggleReaction();
         }
-        // Clean up timers to prevent memory leaks
-        if (this.typing_timer) {
-            clearTimeout(this.typing_timer);
-            this.typing_timer = undefined;
-        }
-        if (this.click_debounce_timer) {
-            clearTimeout(this.click_debounce_timer);
-            this.click_debounce_timer = undefined;
-        }
-        if (this.workspace_adjust_timer) {
-            clearTimeout(this.workspace_adjust_timer);
-            this.workspace_adjust_timer = undefined;
-        }
     }
 
     setWorkspaceOptions() {
-        const workspace = window.Blockly.derivWorkspace as any;
-        if (!workspace) return;
-        const readOnly = !!workspace.options?.readOnly;
+        const workspace = window.Blockly.derivWorkspace;
+        const readOnly = !!workspace.options.readOnly;
         let languageTree, hasCategories, hasCollapse, hasComments, hasDisable;
 
         if (readOnly) {
@@ -112,66 +93,42 @@ export default class ToolboxStore {
             hasDisable = hasCategories;
         }
 
-        if (workspace.options) {
-            workspace.options.collapse = hasCollapse;
-            workspace.options.comments = hasComments;
-            workspace.options.disable = hasDisable;
-            workspace.options.hasCategories = hasCategories;
-            workspace.options.languageTree = languageTree;
-        }
+        workspace.options.collapse = hasCollapse;
+        workspace.options.comments = hasComments;
+        workspace.options.disable = hasDisable;
+        workspace.options.hasCategories = hasCategories;
+        workspace.options.languageTree = languageTree;
     }
     // eslint-disable-next-line class-methods-use-this
     adjustWorkspace() {
-        // Throttle workspace adjustments to prevent excessive calculations
-        if (this.is_adjusting_workspace) {
-            return;
-        }
-
-        if (this.workspace_adjust_timer) {
-            clearTimeout(this.workspace_adjust_timer);
-        }
-
-        // Browser-specific throttle delay (Safari/Firefox)
-        const throttleDelay = browserOptimizer.getThrottleDelay();
-
-        this.workspace_adjust_timer = setTimeout(() => {
-            this.performWorkspaceAdjustment();
-        }, throttleDelay);
-    }
-
-    private performWorkspaceAdjustment() {
         // NOTE: added this load modal open check to prevent scroll when load modal is open
         if (!this.is_workspace_scroll_adjusted && !this.root_store.load_modal.is_load_modal_open) {
-            this.is_adjusting_workspace = true;
             this.is_workspace_scroll_adjusted = true;
 
             setTimeout(() => {
-                const workspace = window.Blockly.derivWorkspace as any;
-                if (!workspace) return;
+                const workspace = window.Blockly.derivWorkspace;
                 const toolbox_width = document.getElementById('gtm-toolbox')?.getBoundingClientRect().width || 0;
-                const block_canvas_rect = workspace.svgBlockCanvas_?.getBoundingClientRect() as any;
+                const block_canvas_rect = workspace.svgBlockCanvas_?.getBoundingClientRect(); // eslint-disable-line
 
                 if (workspace.RTL && block_canvas_rect) {
-                    const is_mobile = !!this.core.ui?.is_mobile;
+                    const is_mobile = this.core.ui.is_mobile;
                     const block_canvas_space = is_mobile ? block_canvas_rect.right : block_canvas_rect.left;
 
-                    const scroll_distance_mobile = toolbox_width - (block_canvas_space || 0) + 20;
-                    const scroll_distance_desktop = toolbox_width - (block_canvas_space || 0) + 36;
-                    const scroll_distance = is_mobile ? scroll_distance_mobile : scroll_distance_desktop;
+                    const scroll_distance_mobile = toolbox_width - block_canvas_space + 20;
+                    const scroll_distance_desktop = toolbox_width - block_canvas_space + 36;
+                    const scroll_distance = this.core.ui.is_mobile ? scroll_distance_mobile : scroll_distance_desktop;
 
-                    if (Math.round(block_canvas_space || 0) <= toolbox_width || is_mobile) {
+                    if (Math.round(block_canvas_space) <= toolbox_width || is_mobile) {
                         scrollWorkspace(workspace, scroll_distance, true, false);
                     }
-                } else if (block_canvas_rect && Math.round(block_canvas_rect.left || 0) <= toolbox_width) {
-                    const is_mobile = !!this.core.ui?.is_mobile;
-                    const scroll_distance = is_mobile
-                        ? toolbox_width - (block_canvas_rect.left || 0) + 50
-                        : toolbox_width - (block_canvas_rect.left || 0) + 36;
+                } else if (Math.round(block_canvas_rect?.left) <= toolbox_width) {
+                    const scroll_distance = this.core.ui.is_mobile
+                        ? toolbox_width - block_canvas_rect.left + 50
+                        : toolbox_width - block_canvas_rect.left + 36;
                     scrollWorkspace(workspace, scroll_distance, true, false);
                 }
 
                 this.is_workspace_scroll_adjusted = false;
-                this.is_adjusting_workspace = false;
             }, 300);
         }
     }
@@ -181,66 +138,31 @@ export default class ToolboxStore {
     }
 
     onToolboxItemClick(category: HTMLElement) {
-        const category_id = category.getAttribute('id');
         const { flyout } = this.root_store;
+        const category_id = category.getAttribute('id');
+        const flyout_content = this.getCategoryContents(category) as Element[];
 
-        // Handle toolbar click independently - immediate response
+        flyout.setIsSearchFlyout(false);
+
         if (flyout.selected_category?.getAttribute('id') === category_id) {
             flyout.setVisibility(false);
-            return;
+        } else {
+            flyout.setSelectedCategory(category);
+            flyout.setContents(flyout_content);
         }
-
-        // Set selection immediately for visual feedback
-        flyout.setSelectedCategory(category);
-        flyout.setVisibility(true);
-
-        // Load flyout content after selection is complete
-        setTimeout(() => {
-            this.loadFlyoutContent(category);
-        }, 0);
-    }
-
-    private loadFlyoutContent(category: HTMLElement) {
-        const { flyout } = this.root_store;
-
-        const flyout_content = this.getCategoryContents(category) as Element[];
-        flyout.setIsSearchFlyout(false);
-        flyout.setContents(flyout_content);
     }
 
     onToolboxItemExpand(index: number) {
-        // Global rate limiting to prevent Safari freezing
-        if (!clickRateLimiter.canClick()) {
-            console.warn('Click rate limit exceeded, ignoring expand');
-            return;
+        if ((this.sub_category_index as number[]).includes(index)) {
+            const open_ids = this.sub_category_index.filter(open_id => open_id !== index);
+            this.sub_category_index = open_ids;
+        } else {
+            this.sub_category_index = [...this.sub_category_index, index];
         }
-
-        // Prevent rapid expand/collapse operations
-        if (this.click_debounce_timer) {
-            return;
-        }
-
-        // Browser-specific debounce delay (Safari/Firefox)
-        const debounceDelay = browserOptimizer.getDebounceDelay();
-
-        this.click_debounce_timer = setTimeout(() => {
-            this.click_debounce_timer = undefined;
-        }, debounceDelay);
-
-        // Browser-specific DOM operation (Safari/Firefox)
-        browserOptimizer.safeDOMOperation(() => {
-            if ((this.sub_category_index as number[]).includes(index)) {
-                const open_ids = this.sub_category_index.filter(open_id => open_id !== index);
-                this.sub_category_index = open_ids;
-            } else {
-                this.sub_category_index = [...this.sub_category_index, index];
-            }
-        });
     }
 
     getCategoryContents = (category: HTMLElement): ChildNode[] => {
-        const workspace = window.Blockly.derivWorkspace as any;
-        if (!workspace) return [];
+        const workspace = window.Blockly.derivWorkspace;
         const dynamic = category.getAttribute('dynamic');
         let xml_list = Array.from(category.childNodes);
 
@@ -250,7 +172,7 @@ export default class ToolboxStore {
             //we needed to add this check since we are not using
             //blocky way of defining vaiables
             if (dynamic === 'VARIABLE') {
-                fnToApply = (window.Blockly as any).DataCategory;
+                fnToApply = window.Blockly.DataCategory;
             }
             xml_list = fnToApply(workspace);
         }
@@ -259,8 +181,7 @@ export default class ToolboxStore {
 
     getAllCategories = (): ChildNode[] => {
         const categories: ChildNode[] = [];
-        if (!this.toolbox_dom) return categories;
-        Array.from((this.toolbox_dom as HTMLElement).childNodes).forEach((category: any) => {
+        Array.from((this.toolbox_dom as HTMLElement).childNodes).forEach((category: ChildNode) => {
             categories.push(category);
             if (this.hasSubCategory((category as HTMLElement).children)) {
                 Array.from((category as HTMLElement).children).forEach(subCategory => {
@@ -271,10 +192,10 @@ export default class ToolboxStore {
         return categories;
     };
 
-    hasSubCategory = (category: HTMLCollection) => {
-        const subCategory = Array.from(category).filter(child => {
-            if (child.tagName.toUpperCase() === 'CATEGORY') {
-                return child;
+    hasSubCategory = (category: HTMLElement[]) => {
+        const subCategory = Object.keys(category).filter(key => {
+            if (category[Number(key)].tagName.toUpperCase() === 'CATEGORY') {
+                return category[Number(key)];
             }
         });
         if (subCategory.length) {
@@ -283,8 +204,7 @@ export default class ToolboxStore {
         return false;
     };
 
-    onSearch = (values: any) => {
-        const search = values?.search || '';
+    onSearch = ({ search = '' }) => {
         this.is_search_focus = true;
         this.showSearch(search);
     };
@@ -312,14 +232,15 @@ export default class ToolboxStore {
     }
 
     showSearch = (search: string) => {
-        const workspace = window.Blockly.derivWorkspace as any;
-        if (!workspace) return;
+        const workspace = window.Blockly.derivWorkspace;
         const flyout_content: HTMLElement[] = [];
         const search_term = search.replace(/\s+/g, ' ').trim().toUpperCase();
         const search_words = search_term.split(' ');
         const all_variables = workspace.getVariablesOfType('');
-        const all_procedures = (window.Blockly as any).Procedures.allProcedures(workspace);
+        const all_procedures = window.Blockly.Procedures.allProcedures(workspace);
         const { flyout } = this.root_store;
+
+        flyout.setVisibility(false);
 
         // avoid general term which the result will return most of the blocks
         const general_term = [
@@ -344,12 +265,12 @@ export default class ToolboxStore {
         const all_categories = this.getAllCategories();
 
         const block_contents = all_categories
-            .filter(category => !this.hasSubCategory((category as HTMLElement).children))
+            .filter(category => !this.hasSubCategory(category.children))
             .map(category => {
                 const contents = this.getCategoryContents(category as HTMLElement);
 
                 const only_block_contents = Array.from(contents).filter(
-                    content => (content as HTMLElement).tagName.toUpperCase() === 'BLOCK'
+                    content => content.tagName.toUpperCase() === 'BLOCK'
                 );
                 return only_block_contents;
             })
@@ -362,9 +283,9 @@ export default class ToolboxStore {
         };
 
         const pushBlockWithPriority = (priority: string) => {
-            block_contents.forEach((block_content: any) => {
+            block_contents.forEach(block_content => {
                 const block_type = block_content.getAttribute('type');
-                const block = (window.Blockly as any).Blocks[block_type];
+                const block = window.Blockly.Blocks[block_type];
                 const block_meta = block.meta instanceof Function && block.meta();
                 const block_definitions = block.definition instanceof Function && block.definition();
                 const block_name = block_meta.display_name;
@@ -433,14 +354,12 @@ export default class ToolboxStore {
                         const matched_meta = Object.keys(block_meta)
                             .filter(key => key !== 'display_name')
                             .find(key => {
-                                const block_meta_strings = (block_meta as any)[key]
+                                const block_meta_strings = block_meta[key]
                                     .toUpperCase()
                                     .replace(/[^\w\s]/gi, '')
                                     .split(' ');
 
-                                return search_words.some(word =>
-                                    block_meta_strings.some((meta: any) => meta.includes(word))
-                                );
+                                return search_words.some(word => block_meta_strings.some(meta => meta.includes(word)));
                             });
 
                         if (matched_meta && matched_meta.length) {
@@ -459,12 +378,10 @@ export default class ToolboxStore {
         priority_order.forEach(priority => pushBlockWithPriority(priority));
 
         // block_variable_name matched
-        const matched_variables = all_variables.filter((variable: any) =>
-            variable.name.toUpperCase().includes(search_term)
-        );
-        const variables_blocks = (window.Blockly as any).DataCategory.search(matched_variables);
+        const matched_variables = all_variables.filter(variable => variable.name.toUpperCase().includes(search_term));
+        const variables_blocks = window.Blockly.DataCategory.search(matched_variables);
         // eslint-disable-next-line consistent-return
-        const unique_var_blocks = variables_blocks.filter((variable_block: any) => {
+        const unique_var_blocks = variables_blocks.filter(variable_block => {
             return flyout_content.indexOf(variable_block) === -1;
         });
         if (unique_var_blocks && unique_var_blocks.length) {
@@ -472,7 +389,7 @@ export default class ToolboxStore {
         }
 
         // block_procedure_name matched
-        const searched_procedures: any = { 0: [], 1: [] };
+        const searched_procedures = { 0: [], 1: [] };
         const procedures_callnoreturn = all_procedures[0];
         const procedures_callreturn = all_procedures[1];
         Object.keys(procedures_callnoreturn).forEach(key => {
@@ -491,9 +408,9 @@ export default class ToolboxStore {
             }
         });
 
-        const procedures_blocks = (window.Blockly as any).Procedures.populateDynamicProcedures(searched_procedures);
+        const procedures_blocks = window.Blockly.Procedures.populateDynamicProcedures(searched_procedures);
         // eslint-disable-next-line consistent-return
-        const unique_proce_blocks = procedures_blocks.filter((procedure_block: any) => {
+        const unique_proce_blocks = procedures_blocks.filter(procedure_block => {
             return flyout_content.indexOf(procedure_block) === -1;
         });
         if (unique_proce_blocks.length) {
@@ -502,7 +419,5 @@ export default class ToolboxStore {
 
         flyout.setIsSearchFlyout(true);
         flyout.setContents(flyout_content, search);
-        // Explicitly ensure flyout is visible after search completes
-        flyout.setVisibility(true);
     };
 }

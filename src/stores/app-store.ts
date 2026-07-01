@@ -1,7 +1,17 @@
-import { action, makeObservable, reaction } from 'mobx';
+import Cookies from 'js-cookie';
+import { action, makeObservable, reaction, when } from 'mobx';
+import { BOT_RESTRICTED_COUNTRIES_LIST } from '@/components/layout/header/utils';
+import {
+    ContentFlag,
+    isEuResidenceWithOnlyVRTC,
+    showDigitalOptionsUnavailableError,
+    standalone_routes,
+} from '@/components/shared';
 import { api_base, ApiHelpers, DBot, runIrreversibleEvents } from '@/external/bot-skeleton';
 import { setCurrency } from '@/external/bot-skeleton/scratch/utils';
 import { TApiHelpersStore } from '@/types/stores.types';
+import { getAuthSessionState } from '@/utils/auth-session';
+import { localize } from '@deriv-com/translations';
 import RootStore from './root-store';
 
 export default class AppStore {
@@ -13,7 +23,7 @@ export default class AppStore {
     disposeReloadOnLanguageChangeReaction: unknown;
     disposeCurrencyReaction: unknown;
     disposeSwitchAccountListener: unknown;
-
+    disposeLandingCompanyChangeReaction: unknown;
     disposeResidenceChangeReaction: unknown;
 
     constructor(root_store: RootStore, core: RootStore['core']) {
@@ -22,10 +32,11 @@ export default class AppStore {
             onUnmount: action,
             registerCurrencyReaction: action,
             registerOnAccountSwitch: action,
-
+            registerLandingCompanyChangeReaction: action,
             registerResidenceChangeReaction: action,
             setDBotEngineStores: action,
             onClickOutsideBlockly: action,
+            showDigitalOptionsMaltainvestError: action,
         });
 
         this.root_store = root_store;
@@ -35,9 +46,118 @@ export default class AppStore {
         this.timer = null;
     }
 
+    getErrorForNonEuClients = () => ({
+        text: localize(
+            'Unfortunately, this trading platform is not available for EU Deriv account. Please switch to a non-EU account to continue trading.'
+        ),
+        title: localize('GTS Empire is unavailable for this account'),
+        link: localize('Switch to another account'),
+    });
+
+    getErrorForEuClients = (is_logged_in = false, country: string | undefined = undefined) => {
+        return {
+            text: ' ',
+            title: is_logged_in
+                ? localize(`GTS Empire is not available for ${country || 'EU'} clients`)
+                : localize(`GTS Empire is unavailable in ${country || 'the EU'}`),
+            link: is_logged_in ? localize("Back to Trader's Hub") : localize('Refresh'),
+            route: standalone_routes.traders_hub,
+        };
+    };
+
+    throwErrorForExceptionCountries = (client_country: string) => {
+        const { client, common } = this.core;
+        const bot_resticted_countries = BOT_RESTRICTED_COUNTRIES_LIST();
+
+        const not_allowed_clients_country: { [key: string]: string } = {
+            ...bot_resticted_countries,
+        };
+
+        const country_name = not_allowed_clients_country[client_country];
+
+        if (country_name) {
+            return showDigitalOptionsUnavailableError(
+                common.showError,
+                this.getErrorForEuClients(client.is_logged_in, country_name)
+            );
+        }
+    };
+
+    handleErrorForEu = () => {
+        const { client, common } = this.core;
+        const { is_landing_company_loaded } = client;
+
+        // Check if we're in the process of logging in
+        // When isSingleLoggingIn is true, we don't want to show the EU error message
+        const is_tmb_enabled = window.is_tmb_enabled === true;
+        const { hasValidSession } = getAuthSessionState();
+        const isSingleLoggingIn =
+            window.location.pathname === '/callback' ||
+            (Cookies.get('logged_state') === 'true' && !is_tmb_enabled && !hasValidSession);
+
+        if (isSingleLoggingIn) {
+            common.setError(false, {});
+            return false;
+        }
+
+        if (!client?.is_logged_in && client?.is_eu_country) {
+            this.throwErrorForExceptionCountries(client?.clients_country as string);
+            return showDigitalOptionsUnavailableError(common.showError, this.getErrorForEuClients());
+        }
+
+        if (is_landing_company_loaded !== undefined && !is_landing_company_loaded) {
+            common.setError(false, {});
+            return false;
+        }
+
+        this.throwErrorForExceptionCountries(client?.account_settings?.country_code as string);
+        if (client.should_show_eu_error) {
+            return showDigitalOptionsUnavailableError(common.showError, this.getErrorForEuClients(client.is_logged_in));
+        }
+
+        if (client.content_flag === ContentFlag.HIGH_RISK_CR) {
+            common.setError(false, {});
+            return false;
+        }
+
+        if (client.content_flag === ContentFlag.LOW_RISK_CR_EU) {
+            return showDigitalOptionsUnavailableError(
+                common.showError,
+                this.getErrorForNonEuClients(),
+                () => {
+                    // TODOL: need to fix this from the deriv ui package
+                    document.querySelector('.deriv-account-switcher__button')?.click();
+                },
+                false,
+                false
+            );
+        }
+
+        if (
+            (!client.is_bot_allowed && client.is_eu && client.should_show_eu_error) ||
+            isEuResidenceWithOnlyVRTC(client.active_accounts) ||
+            client.is_options_blocked
+        ) {
+            return showDigitalOptionsUnavailableError(
+                common.showError,
+                this.getErrorForNonEuClients(),
+                () => {
+                    // TODOL: need to fix this from the deriv ui package
+                    document.querySelector('.deriv-account-switcher__button')?.click();
+                },
+                false,
+                false
+            );
+        }
+
+        common.setError(false, {});
+        return false;
+    };
+
     onMount = async () => {
         const { blockly_store, run_panel } = this.root_store;
-        const { ui } = this.core;
+        const { client, ui } = this.core;
+        this.showDigitalOptionsMaltainvestError();
 
         let timer_counter = 1;
 
@@ -63,12 +183,22 @@ export default class AppStore {
 
         this.registerCurrencyReaction.call(this);
         this.registerOnAccountSwitch.call(this);
-
+        this.registerLandingCompanyChangeReaction.call(this);
         this.registerResidenceChangeReaction.call(this);
 
         window.addEventListener('click', this.onClickOutsideBlockly);
 
         blockly_store.getCachedActiveTab();
+
+        when(
+            () => client?.should_show_eu_error || client?.is_landing_company_loaded,
+            () => this.showDigitalOptionsMaltainvestError()
+        );
+
+        reaction(
+            () => client?.content_flag,
+            () => this.showDigitalOptionsMaltainvestError()
+        );
     };
 
     onUnmount = () => {
@@ -87,7 +217,9 @@ export default class AppStore {
         if (typeof this.disposeSwitchAccountListener === 'function') {
             this.disposeSwitchAccountListener();
         }
-
+        if (typeof this.disposeLandingCompanyChangeReaction === 'function') {
+            this.disposeLandingCompanyChangeReaction();
+        }
         if (typeof this.disposeResidenceChangeReaction === 'function') {
             this.disposeResidenceChangeReaction();
         }
@@ -141,6 +273,8 @@ export default class AppStore {
                     ApiHelpers.setInstance(this.api_helpers_store);
                 }
 
+                this.showDigitalOptionsMaltainvestError();
+
                 const active_symbols = ApiHelpers?.instance?.active_symbols;
                 const contracts_for = ApiHelpers?.instance?.contracts_for;
 
@@ -165,9 +299,22 @@ export default class AppStore {
         );
     };
 
+    registerLandingCompanyChangeReaction = () => {
+        const { client } = this.core;
+
+        this.disposeLandingCompanyChangeReaction = reaction(
+            () => client.landing_company_shortcode,
+            () => this.handleErrorForEu()
+        );
+    };
+
     registerResidenceChangeReaction = () => {
-        // Country code no longer available from removed get_settings API
-        // Previously set up residence change reaction here
+        const { client } = this.core;
+
+        this.disposeResidenceChangeReaction = reaction(
+            () => client.account_settings?.country_code,
+            () => this.handleErrorForEu()
+        );
     };
 
     setDBotEngineStores = () => {
@@ -213,5 +360,9 @@ export default class AppStore {
                 window.Blockly?.hideChaff(/* allowToolbox */ false);
             }
         }
+    };
+
+    showDigitalOptionsMaltainvestError = () => {
+        this.handleErrorForEu();
     };
 }

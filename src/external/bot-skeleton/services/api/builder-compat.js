@@ -155,8 +155,8 @@ const normalizeLookupKey = value =>
         .replace(/^_+|_+$/g, '');
 
 export const normalizeMarket = market => {
-    const normalized_market = normalizeLookupKey(market);
-    return MARKET_ALIASES[normalized_market] || market;
+    if (market === 'derived') return 'synthetic_index';
+    return market;
 };
 
 export const normalizeSubmarket = submarket => {

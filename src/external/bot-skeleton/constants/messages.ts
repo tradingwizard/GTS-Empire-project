@@ -18,9 +18,6 @@ export const unrecoverable_errors = [
     'InputValidationFailed',
     'ClientUnwelcome',
     'PriceMoved',
-    'CompanyWideLimitExceeded',
-    'DailyProfitLimitExceeded',
-    'ClientContractProfitLimitExceeded',
 ];
 
 export enum MessageTypes {

@@ -49,6 +49,8 @@
     }
 
     &__arrow {
+        position: absolute;
+        right: 1.3rem;
         fill: var(--text-general);
 
         --fill-color1: var(--text-less-prominent);
@@ -61,13 +63,13 @@
         display: flex;
         align-items: center;
         justify-content: flex-start;
-        padding-inline-start: 1.2rem;
+        padding-left: 1.2rem;
 
         &-text {
             color: var(--text-prominent);
             font-size: 1.4rem;
             white-space: nowrap;
-          //overflow: hidden;
+            overflow: hidden;
             max-width: calc(100% - 4rem);
             text-overflow: ellipsis;
             display: block;
@@ -92,7 +94,7 @@
         white-space: nowrap;
         max-width: calc(100% - 3.6rem);
         text-overflow: ellipsis;
-      //overflow: hidden;
+        overflow: hidden;
 
         &--has-value {
             transform: translate(0, -1.8rem) scale(0.75);

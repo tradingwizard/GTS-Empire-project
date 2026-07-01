@@ -1,5 +1,6 @@
 export const REQUESTS = [
     'active_symbols',
+    'authorize',
     'balance',
     'buy',
     'proposal',
@@ -41,7 +42,6 @@ class APIMiddleware {
 
     sendIsCalled = ({ response_promise, args: [request] }) => {
         const req_type = this.getRequestType(request);
-
         if (req_type) performance.mark(`${req_type}_start`);
         response_promise
             .then(res => {

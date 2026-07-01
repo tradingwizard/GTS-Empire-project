@@ -2,119 +2,129 @@ import { getSocketURL } from '@/components/shared';
 import DerivAPIBasic from '@deriv/deriv-api/dist/DerivAPIBasic';
 import APIMiddleware from './api-middleware';
 
-/**
- * Singleton instance management for DerivAPI
- */
 let derivApiInstance = null;
 let derivApiPromise = null;
-let currentWebSocketURL = null;
+let currentWebSocketBaseURL = null;
 
-/**
- * Clears the singleton instance
- */
+const buildForgetResponse = request => {
+    const msg_type = request?.forget_all != null ? 'forget_all' : 'forget';
+    return {
+        [msg_type]: request?.[msg_type],
+        echo_req: request,
+        msg_type,
+    };
+};
+
+const installCleanupCompatibility = api => {
+    if (!api || api.__gts_cleanup_compat_installed) return api;
+
+    const originalSend = api.send?.bind(api);
+    const originalForget = api.forget?.bind(api);
+
+    api.send = request => {
+        if (request?.forget_all != null) {
+            return Promise.resolve(buildForgetResponse(request));
+        }
+
+        if (!originalSend) {
+            return Promise.reject(new Error('API send is not available.'));
+        }
+
+        return originalSend(request).catch(error => {
+            if (request?.forget != null || request?.forget_all != null) {
+                return buildForgetResponse(request);
+            }
+            throw error;
+        });
+    };
+
+    api.forget = id => {
+        const request = { forget: id };
+        if (!id) return Promise.resolve(buildForgetResponse(request));
+
+        if (originalForget) {
+            return originalForget(id).catch(() => buildForgetResponse(request));
+        }
+
+        return api.send(request).catch(() => buildForgetResponse(request));
+    };
+
+    api.forgetAll = (...types) => {
+        const value = types.length === 1 ? types[0] : types;
+        return Promise.resolve(buildForgetResponse({ forget_all: value }));
+    };
+
+    api.__gts_cleanup_compat_installed = true;
+    return api;
+};
+
 export const clearDerivApiInstance = () => {
-    console.log('[DerivAPI] Clearing singleton instance');
     if (derivApiInstance?.connection) {
         try {
-            // Remove listeners if possible or just close
             derivApiInstance.connection.close();
-        } catch (error) {
-            console.error('[DerivAPI] Error closing WebSocket:', error);
+        } catch {
+            /* noop */
         }
     }
     derivApiInstance = null;
     derivApiPromise = null;
-    currentWebSocketURL = null;
+    currentWebSocketBaseURL = null;
 };
 
-/**
- * Generates a Deriv API instance with WebSocket connection using singleton pattern
- * @param {boolean} forceNew - Force creation of new instance
- * @returns Promise with DerivAPIBasic instance
- */
 export const generateDerivApiInstance = async (forceNew = false) => {
-    if (forceNew) {
-        clearDerivApiInstance();
-    }
+    if (forceNew) clearDerivApiInstance();
 
-    // Check if current instance is still valid
-    if (derivApiInstance) {
-        const state = derivApiInstance.connection?.readyState;
-        if (state === WebSocket.OPEN) {
-            return derivApiInstance;
-        }
-        if (state === WebSocket.CONNECTING) {
-            if (derivApiPromise) return derivApiPromise;
-        } else {
-            // CLOSED or CLOSING
-            clearDerivApiInstance();
-        }
-    }
-
-    if (derivApiPromise) {
-        return derivApiPromise;
-    }
+    const state = derivApiInstance?.connection?.readyState;
+    if (state === WebSocket.OPEN) return derivApiInstance;
+    if (state === WebSocket.CONNECTING && derivApiPromise) return derivApiPromise;
+    if (state === WebSocket.CLOSING || state === WebSocket.CLOSED) clearDerivApiInstance();
+    if (derivApiPromise) return derivApiPromise;
 
     derivApiPromise = (async () => {
-        try {
-            const wsURL = await getSocketURL();
+        const wsURL = await getSocketURL();
+        const nextBaseURL = `${wsURL}`.split('?')[0];
 
-            // Handle URL changes (Account switcher)
-            // Fix: Compare only the base URL path, ignoring query parameters like OTP
-            // which change on every call and were causing infinite resets.
-            const currentBase = currentWebSocketURL ? currentWebSocketURL.split('?')[0] : null;
-            const newBase = wsURL ? wsURL.split('?')[0] : null;
-
-            if (currentBase && currentBase !== newBase) {
-                console.log('[DerivAPI] Environment changed (Demo/Real), resetting connection');
-                clearDerivApiInstance();
-                // Recurse once to start with new URL
-                return generateDerivApiInstance(true);
-            }
-            currentWebSocketURL = wsURL;
-
-            console.log('[DerivAPI] Establishing connection to:', wsURL);
-            const socket = new WebSocket(wsURL);
-            const api = new DerivAPIBasic({
-                connection: socket,
-                middleware: new APIMiddleware({}),
-            });
-
-            derivApiInstance = api;
-
-            return new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                    cleanup();
-                    reject(new Error('Connection timeout'));
-                }, 15000);
-
-                const onOpen = () => {
-                    cleanup();
-                    console.log('[DerivAPI] Connection established');
-                    resolve(api);
-                };
-
-                const onError = err => {
-                    cleanup();
-                    console.error('[DerivAPI] Connection error');
-                    clearDerivApiInstance(); // Ensure we don't reuse failed instances
-                    reject(err);
-                };
-
-                const cleanup = () => {
-                    clearTimeout(timeout);
-                    socket.removeEventListener('open', onOpen);
-                    socket.removeEventListener('error', onError);
-                };
-
-                socket.addEventListener('open', onOpen);
-                socket.addEventListener('error', onError);
-            });
-        } catch (error) {
-            derivApiPromise = null;
-            throw error;
+        if (currentWebSocketBaseURL && currentWebSocketBaseURL !== nextBaseURL) {
+            clearDerivApiInstance();
+            return generateDerivApiInstance(true);
         }
-    })();
+
+        currentWebSocketBaseURL = nextBaseURL;
+        const socket = new WebSocket(wsURL);
+        const api = new DerivAPIBasic({
+            connection: socket,
+            middleware: new APIMiddleware({}),
+        });
+
+        derivApiInstance = installCleanupCompatibility(api);
+
+        return new Promise((resolve, reject) => {
+            const cleanup = () => {
+                clearTimeout(timeout);
+                socket.removeEventListener('open', handleOpen);
+                socket.removeEventListener('error', handleError);
+            };
+            const handleOpen = () => {
+                cleanup();
+                resolve(api);
+            };
+            const handleError = event => {
+                cleanup();
+                clearDerivApiInstance();
+                reject(event);
+            };
+            const timeout = setTimeout(() => {
+                cleanup();
+                clearDerivApiInstance();
+                reject(new Error('Deriv WebSocket connection timeout'));
+            }, 15000);
+
+            socket.addEventListener('open', handleOpen);
+            socket.addEventListener('error', handleError);
+        });
+    })().finally(() => {
+        derivApiPromise = null;
+    });
 
     return derivApiPromise;
 };
@@ -125,33 +135,49 @@ export const getLoginId = () => {
     return null;
 };
 
-export const V2GetActiveAccountId = () => {
-    const account_id = localStorage.getItem('active_loginid');
-    if (account_id && account_id !== 'null') return account_id;
+const safeParse = (value, fallback = {}) => {
+    try {
+        return value ? JSON.parse(value) : fallback;
+    } catch {
+        return fallback;
+    }
+};
+
+export const getOAuthAccessToken = () => {
+    const token = localStorage.getItem('authToken');
+    if (token && token !== 'null') return token;
     return null;
 };
 
+const isLegacyAuthorizeToken = token => {
+    if (!token || typeof token !== 'string') return false;
+
+    const oauth_token = getOAuthAccessToken();
+    if (oauth_token && token === oauth_token) return false;
+
+    // OAuth/Ory/JWT-style access tokens must never be passed to legacy authorize.
+    return !token.includes('.');
+};
+
+export const getLegacyAuthorizeToken = () => {
+    const active_loginid = getLoginId();
+    if (!active_loginid) return null;
+
+    const accounts_list = safeParse(localStorage.getItem('accountsList'));
+    const token = accounts_list?.[active_loginid];
+
+    return isLegacyAuthorizeToken(token) ? token : null;
+};
+
+export const V2GetActiveToken = () => getLegacyAuthorizeToken();
+
+export const V2GetActiveClientId = () => {
+    return getLoginId();
+};
+
 export const getToken = () => {
-    let active_loginid = getLoginId();
-
-    // Check if marketing mode is active
-    if (localStorage.getItem('marketing_mode_active') === 'true') {
-        const client_accounts = JSON.parse(localStorage.getItem('accountsList')) ?? {};
-        // Find the demo account ID (starts with VRT or VRTC)
-        const demo_loginid = Object.keys(client_accounts).find(id => id.startsWith('VRT') || id.startsWith('VRTC'));
-        if (demo_loginid) {
-            console.log('[Marketing Mode] Intercepting getToken: Route trades through Demo Account:', demo_loginid);
-            return {
-                token: client_accounts[demo_loginid] ?? undefined,
-                account_id: demo_loginid,
-            };
-        }
-    }
-
-    const client_accounts = JSON.parse(localStorage.getItem('accountsList')) ?? undefined;
-    const active_account = (client_accounts && client_accounts[active_loginid]) || {};
     return {
-        token: active_account ?? undefined,
-        account_id: active_loginid ?? undefined,
+        token: getLegacyAuthorizeToken() ?? undefined,
+        account_id: getLoginId() ?? undefined,
     };
 };

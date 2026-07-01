@@ -13,10 +13,13 @@ import { isDbotRTL } from '@/external/bot-skeleton/utils/workspace';
 import { TStores } from '@deriv/stores/types';
 import { localize } from '@deriv-com/translations';
 import { TStrategy } from 'Types';
-/* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-/* [/AI] */
+import {
+    rudderStackSendUploadStrategyCompletedEvent,
+    rudderStackSendUploadStrategyFailedEvent,
+    rudderStackSendUploadStrategyStartEvent,
+} from '../analytics/rudderstack-common-events';
+import { getStrategyType } from '../analytics/utils';
 import { tabs_title } from '../constants/load-modal';
-import { DBOT_TABS } from '@/constants/bot-contents';
 import { waitForDomElement } from '../utils/dom-observer';
 import RootStore from './root-store';
 
@@ -172,8 +175,10 @@ export default class LoadModalStore {
             google_drive.upload_id = uuidv4();
         }
 
-        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-        /* [/AI] */
+        rudderStackSendUploadStrategyStartEvent({
+            upload_provider: 'google_drive',
+            upload_id: google_drive.upload_id,
+        });
 
         const { loadFile } = this.root_store.google_drive;
         const load_file = await loadFile();
@@ -191,7 +196,7 @@ export default class LoadModalStore {
         });
 
         const { active_tab } = this.root_store.dashboard;
-        if (active_tab === DBOT_TABS.BOT_BUILDER) this.toggleLoadModal();
+        if (active_tab === 1) this.toggleLoadModal();
 
         this.root_store.dashboard.is_dialog_open = false;
     };
@@ -477,8 +482,12 @@ export default class LoadModalStore {
         derivWorkspace.clearUndo();
         derivWorkspace.current_strategy_id = strategy_id;
 
-        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-        /* [/AI] */
+        const upload_type = getStrategyType(block_string ?? '');
+        rudderStackSendUploadStrategyCompletedEvent({
+            upload_provider: 'my_computer',
+            upload_type,
+            upload_id: this.upload_id,
+        });
     };
 
     updateXmlValuesOnStrategySelection = () => {
@@ -533,11 +542,17 @@ export default class LoadModalStore {
             (load_options.workspace as any).RTL = isDbotRTL();
         }
 
-        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-        /* [/AI] */
-
+        const upload_type = getStrategyType(load_options?.block_string ?? '');
         const result = await load({ ...load_options, show_snackbar: false });
-        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
-        /* [/AI] */
+        if (!result?.error) {
+            rudderStackSendUploadStrategyStartEvent({ upload_provider: 'my_computer', upload_id: this.upload_id });
+        } else if (result?.error) {
+            rudderStackSendUploadStrategyFailedEvent({
+                upload_provider: 'my_computer',
+                upload_id: this.upload_id,
+                upload_type,
+                error_message: result.error,
+            });
+        }
     };
 }

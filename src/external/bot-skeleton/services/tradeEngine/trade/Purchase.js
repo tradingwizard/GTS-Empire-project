@@ -4,7 +4,6 @@ import { contractStatus, info, log } from '../utils/broadcast';
 import { doUntilDone, getUUID, recoverFromError, tradeOptionToBuy } from '../utils/helpers';
 import { purchaseSuccessful } from './state/actions';
 import { BEFORE_PURCHASE } from './state/constants';
-import { observer } from '../../../utils/observer';
 
 let delayIndex = 0;
 let purchase_reference;
@@ -35,7 +34,7 @@ export default Engine =>
                 }
 
                 delayIndex = 0;
-                log(LogTypes.PURCHASE, { transaction_id: buy.transaction_id });
+                log(LogTypes.PURCHASE, { longcode: buy.longcode, transaction_id: buy.transaction_id });
                 info({
                     accountID: this.accountInfo.loginid,
                     totalRuns: this.updateAndReturnTotalRuns(),
@@ -43,16 +42,6 @@ export default Engine =>
                     contract_type,
                     buy_price: buy.buy_price,
                 });
-
-                // Copy trading logic
-                const is_copy_trading = observer.getState('is_copy_trading');
-                const client_store = observer.getState('client.store');
-                if (is_copy_trading && client_store?.is_virtual) {
-                    observer.emit('bot.copy_trade', {
-                        contract_type,
-                        trade_options: this.tradeOptions,
-                    });
-                }
             };
 
             if (this.is_proposal_subscription_required) {

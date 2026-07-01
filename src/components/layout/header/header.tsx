@@ -1,242 +1,181 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback } from 'react';
 import clsx from 'clsx';
 import { observer } from 'mobx-react-lite';
-import { generateOAuthURL } from '@/components/shared';
+import PWAInstallButton from '@/components/pwa-install-button';
+import { standalone_routes } from '@/components/shared';
 import Button from '@/components/shared_ui/button';
 import useActiveAccount from '@/hooks/api/account/useActiveAccount';
+import { useOauth2 } from '@/hooks/auth/useOauth2';
+import { useFirebaseCountriesConfig } from '@/hooks/firebase/useFirebaseCountriesConfig';
 import { useApiBase } from '@/hooks/useApiBase';
-import { useLogout } from '@/hooks/useLogout';
 import { useStore } from '@/hooks/useStore';
-import { navigateToTransfer } from '@/utils/transfer-utils';
-import { BOT_VERSION_CONFIG } from '@/constants/bot-version';
-import { Localize } from '@deriv-com/translations';
+import useTMB from '@/hooks/useTMB';
+import { clearAuthData } from '@/utils/auth-utils';
+import { debugAuth } from '@/utils/auth-debug';
+import { redirectToLogin } from '@/utils/pkce';
+import { Localize, useTranslations } from '@deriv-com/translations';
 import { Header, useDevice, Wrapper } from '@deriv-com/ui';
 import { AppLogo } from '../app-logo';
+import AccountsInfoLoader from './account-info-loader';
 import AccountSwitcher from './account-switcher';
-import MenuItems from './menu-items';
 import MobileMenu from './mobile-menu';
 import './header.scss';
 
-const AppHeader = observer(() => {
-    const buildVersion =
-        process.env.BUILD_VERSION ||
-        process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ||
-        `v${BOT_VERSION_CONFIG.REQUIRED_VERSION}`;
+type TAppHeaderProps = {
+    isAuthenticating?: boolean;
+};
+
+const AppHeader = observer(({ isAuthenticating }: TAppHeaderProps) => {
     const { isDesktop } = useDevice();
-    const { isAuthorizing, activeLoginid, setIsAuthorizing, authData } = useApiBase();
+    const { isAuthorizing, activeLoginid } = useApiBase();
     const { client } = useStore() ?? {};
-    const [authTimeout, setAuthTimeout] = useState(false);
-    const is_account_regenerating = client?.is_account_regenerating || false;
 
-    // Detect OAuth callback on mount (before App.tsx cleans up the URL).
-    // When ?code=...&state=... is present the full auth flow can take 7-15 s
-    // (token exchange → accounts fetch → OTP → WebSocket auth), so we must
-    // suppress the short fallback timeout and keep the spinner throughout.
-    const [isOAuthPending, setIsOAuthPending] = useState(() => {
-        const params = new URLSearchParams(window.location.search);
-        return Boolean(params.get('code') && params.get('state'));
-    });
+    const { data: activeAccount } = useActiveAccount({ allBalanceData: client?.all_accounts_balance });
+    const { accounts, getCurrency, is_virtual } = client ?? {};
+    const has_wallet = Object.keys(accounts ?? {}).some(id => accounts?.[id].account_category === 'wallet');
 
-    const { data: activeAccount } = useActiveAccount({
-        allBalanceData: client?.all_accounts_balance,
-        directBalance: client?.balance,
-    });
+    const currency = getCurrency?.();
+    const { localize } = useTranslations();
 
-    const handleLogout = useLogout();
+    const { isSingleLoggingIn } = useOauth2();
 
-    // Clear OAuth-pending flag once the account is set (auth succeeded)
-    // or after a generous timeout in case something goes wrong.
-    useEffect(() => {
-        if (!isOAuthPending) return;
+    const { hubEnabledCountryList } = useFirebaseCountriesConfig();
+    const { onRenderTMBCheck, isTmbEnabled } = useTMB();
+    // `isTmbEnabled()` is async; calling it inline returns a Promise (always
+    // truthy), which would silently force the TMB branch on. TMB is disabled for
+    // this fork, so derive the flag from the synchronously-available window flag.
+    void isTmbEnabled;
+    const is_tmb_enabled = window.is_tmb_enabled === true;
+    // No need for additional state management here since we're handling it in the layout component
 
-        if (activeLoginid) {
-            setIsOAuthPending(false);
-            return;
-        }
+    const renderAccountSection = useCallback(() => {
+        // Show loader during authentication processes
+        if (isAuthenticating || isAuthorizing || (isSingleLoggingIn && !is_tmb_enabled)) {
+            return <AccountsInfoLoader isLoggedIn isMobile={!isDesktop} speed={3} />;
+        } else if (activeLoginid) {
+            return (
+                <>
+                    {/* <CustomNotifications /> */}
 
-        // Safety net: give up after 30 s and let the normal flow decide
-        const timer = setTimeout(() => setIsOAuthPending(false), 30_000);
-        return () => clearTimeout(timer);
-    }, [isOAuthPending, activeLoginid]);
+                    <AccountSwitcher activeAccount={activeAccount} />
 
-    // Handle direct URL access with legacy token param
-    useEffect(() => {
-        const urlParams = new URLSearchParams(window.location.search);
-        const account_id = urlParams.get('account_id');
-        if (account_id) {
-            setIsAuthorizing(true);
-        }
-    }, [setIsAuthorizing]);
-
-    // Fallback timeout: show login button if auth never resolves.
-    // Suppressed during the OAuth callback flow (isOAuthPending = true).
-    useEffect(() => {
-        if (isOAuthPending) return;
-
-        const timer = setTimeout(() => {
-            if (isAuthorizing && !activeLoginid) {
-                setAuthTimeout(true);
-                setIsAuthorizing(false);
-            }
-        }, 5000);
-
-        if (activeLoginid || !isAuthorizing) {
-            if (authTimeout) setAuthTimeout(false);
-            clearTimeout(timer);
-        }
-
-        return () => clearTimeout(timer);
-    }, [isAuthorizing, activeLoginid, setIsAuthorizing, authTimeout, isOAuthPending]);
-
-    const handleSignup = useCallback(() => {
-        window.location.href = 'https://gtstrader.app';
-    }, []);
-
-    const handleLogin = useCallback(async () => {
-        try {
-            // Set authorizing state immediately when login is clicked
-            setIsAuthorizing(true);
-
-            // Generate OAuth URL with CSRF token and PKCE parameters
-            const oauthUrl = await generateOAuthURL();
-
-            if (oauthUrl) {
-                // Redirect to OAuth URL
-                window.location.replace(oauthUrl);
-            } else {
-                console.error('Failed to generate OAuth URL');
-                setIsAuthorizing(false);
-            }
-        } catch (error) {
-            console.error('Login redirection failed:', error);
-            // Reset authorizing state if redirection fails
-            setIsAuthorizing(false);
-        }
-    }, [setIsAuthorizing]);
-
-    const handleTransfer = useCallback(() => {
-        const transferCurrency = authData?.currency;
-        if (!transferCurrency) {
-            console.error('No currency available for transfer');
-            return;
-        }
-        navigateToTransfer(transferCurrency);
-    }, [authData?.currency]);
-
-    const renderAccountSection = useCallback(
-        (position: 'left' | 'right' = 'right') => {
-            // Show account switcher and logout when user is fully authenticated
-            if (activeLoginid && !is_account_regenerating) {
-                if (position === 'left' && !isDesktop) {
-                    return null;
-                } else if (position === 'right') {
-                    // For right section - render account switcher on BOTH desktop and mobile
-                    return (
-                        <div className='auth-actions'>
-                            <div className='account-info'>
-                                <AccountSwitcher
-                                    activeAccount={activeAccount}
-                                    onTransferClick={!isDesktop ? handleTransfer : undefined}
-                                    isTransferDisabled={
-                                        !isDesktop ? client?.is_logging_out || !authData?.currency : undefined
+                    {isDesktop &&
+                        (has_wallet ? (
+                            <Button
+                                className='manage-funds-button'
+                                has_effect
+                                text={localize('Manage funds')}
+                                onClick={() => {
+                                    let redirect_url = new URL(standalone_routes.wallets_transfer);
+                                    const is_hub_enabled_country = hubEnabledCountryList.includes(
+                                        client?.residence || ''
+                                    );
+                                    if (is_hub_enabled_country) {
+                                        redirect_url = new URL(standalone_routes.recent_transactions);
                                     }
-                                />
-                            </div>
-                            {isDesktop && (
-                               <Button
-    primary
-    className='btn-transfer'
-    disabled={client?.is_logging_out || !authData?.currency}
-    onClick={handleTransfer}
->
-    <Localize i18n_default_text='Transfer' />
-</Button>
-                            )}
-                        </div>
-                    );
-                }
-            }
-            // Show login button only when fully settled (not during OAuth flow)
-            else if (
-                position === 'right' &&
-                !isOAuthPending &&
-                ((!is_account_regenerating && !isAuthorizing && !activeLoginid) || authTimeout)
-            ) {
-                return (
-                    <div className='auth-actions auth-actions--glassmorphic'>
-                        <Button tertiary className='btn-login' onClick={handleLogin}>
-                            <Localize i18n_default_text='Log in' />
-                        </Button>
-                        <Button primary_light className='btn-signup' onClick={handleSignup}>
-                            <Localize i18n_default_text='Sign up' />
-                        </Button>
-                    </div>
-                );
-            }
-            // Default: Show spinner during loading states or when authorizing
-            else if (position === 'right') {
-                return (
-                    <div className='auth-actions auth-actions--loading'>
-                        <svg
-                            className='auth-actions__spinner'
-                            viewBox='0 0 24 24'
-                            fill='none'
-                            xmlns='http://www.w3.org/2000/svg'
-                        >
-                            <circle
-                                cx='12'
-                                cy='12'
-                                r='10'
-                                stroke='currentColor'
-                                strokeWidth='2.5'
-                                strokeLinecap='round'
-                                strokeDasharray='31.416'
-                                strokeDashoffset='10'
+                                    if (is_virtual) {
+                                        redirect_url.searchParams.set('account', 'demo');
+                                    } else if (currency) {
+                                        redirect_url.searchParams.set('account', currency);
+                                    }
+                                    window.location.assign(redirect_url.toString());
+                                }}
+                                primary
                             />
-                        </svg>
-                    </div>
-                );
-            }
+                        ) : (
+                            <Button
+                                primary
+                                onClick={() => {
+                                    const redirect_url = new URL(standalone_routes.cashier_deposit);
+                                    if (currency) {
+                                        redirect_url.searchParams.set('account', currency);
+                                    }
+                                    window.location.assign(redirect_url.toString());
+                                }}
+                                className='deposit-button'
+                            >
+                                {localize('Deposit')}
+                            </Button>
+                        ))}
+                </>
+            );
+        } else {
+            return (
+                <div className='auth-actions'>
+                    <Button
+                        tertiary
+                        onClick={async () => {
+                            debugAuth('header.login-clicked');
+                            clearAuthData(false, 'header.loginButton');
+                            const getQueryParams = new URLSearchParams(window.location.search);
+                            const currency = getQueryParams.get('account') ?? '';
+                            const query_param_currency =
+                                currency || sessionStorage.getItem('query_param_currency') || 'USD';
 
-            return null;
-        },
-        [
-            isAuthorizing,
-            isDesktop,
-            activeLoginid,
-            client,
-            activeAccount,
-            authTimeout,
-            is_account_regenerating,
-            isOAuthPending,
-            authData,
-            handleLogin,
-            handleSignup,
-            handleTransfer,
-        ]
-    );
+                            try {
+                                // First, explicitly wait for TMB status to be determined
+                                const tmbEnabled = await isTmbEnabled();
+                                // Now use the result of the explicit check
+                                if (tmbEnabled) {
+                                    await onRenderTMBCheck(true); // Pass true to indicate it's from login button
+                                } else {
+                                    // New Deriv API platform: PKCE OAuth redirect
+                                    await redirectToLogin({ account: query_param_currency });
+                                }
+                            } catch (error) {
+                                // eslint-disable-next-line no-console
+                                console.error(error);
+                            }
+                        }}
+                    >
+                        <Localize i18n_default_text='Log in' />
+                    </Button>
+                    <Button
+                        primary
+                        onClick={() => {
+                            redirectToLogin({ isSignup: true });
+                        }}
+                    >
+                        <Localize i18n_default_text='Sign up' />
+                    </Button>
+                </div>
+            );
+        }
+    }, [
+        isAuthenticating,
+        isAuthorizing,
+        isSingleLoggingIn,
+        isDesktop,
+        activeLoginid,
+        standalone_routes,
+        client,
+        has_wallet,
+        currency,
+        localize,
+        activeAccount,
+        is_virtual,
+        onRenderTMBCheck,
+        is_tmb_enabled,
+    ]);
 
     if (client?.should_hide_header) return null;
-
     return (
-        <>
-            <Header
-                className={clsx('app-header', {
-                    'app-header--desktop': isDesktop,
-                    'app-header--mobile': !isDesktop,
-                })}
-            >
-                <Wrapper variant='left'>
-                    <MobileMenu onLogout={handleLogout} />
-                    <AppLogo />
-                    <span className='app-header__build-version' title='Build version'>
-                        {buildVersion}
-                    </span>
-                    {isDesktop && <MenuItems />}
-                </Wrapper>
-                <Wrapper variant='right'>{renderAccountSection('right')}</Wrapper>
-            </Header>
-        </>
+        <Header
+            className={clsx('app-header', {
+                'app-header--desktop': isDesktop,
+                'app-header--mobile': !isDesktop,
+            })}
+        >
+            <Wrapper variant='left'>
+                <AppLogo />
+                <MobileMenu />
+            </Wrapper>
+            <Wrapper variant='right'>
+                {!isDesktop && <PWAInstallButton variant='primary' size='medium' />}
+                {renderAccountSection()}
+            </Wrapper>
+            {/* <PWAInstallModalTest /> */}
+        </Header>
     );
 });
 

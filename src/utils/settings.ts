@@ -1,7 +1,5 @@
 const getSettingsFromLocal = () => {
-    const raw_settings = localStorage.getItem('dbot_settings');
-    if (!raw_settings) return null;
-    return JSON.parse(raw_settings);
+    return JSON.parse(localStorage.getItem('dbot_settings'));
 };
 
 export const getSetting = (key: string) => {

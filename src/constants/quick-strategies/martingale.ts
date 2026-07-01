@@ -5,7 +5,7 @@ import { TDescriptionItem } from '../../pages/bot-builder/quick-strategy/types';
 export const MARTINGALE = (): TDescriptionItem[] => [
     {
         type: 'subtitle',
-        content: [`${localize('Exploring the')} Martingale ${localize('strategy in Deriv Bot')}`],
+        content: [localize('Exploring the Martingale strategy in Deriv Bot')],
         expanded: true,
         no_collapsible: false,
     },
@@ -23,9 +23,7 @@ export const MARTINGALE = (): TDescriptionItem[] => [
     },
     {
         type: 'text',
-        content: [
-            `${localize('These are the trade parameters used in Deriv Bot with')} Martingale ${localize('strategy.')}`,
-        ],
+        content: [localize('These are the trade parameters used in Deriv Bot with Martingale strategy.')],
     },
     {
         type: 'text',
@@ -69,18 +67,18 @@ export const MARTINGALE = (): TDescriptionItem[] => [
     },
     {
         type: 'subtitle',
-        content: [`${localize('An example of')} Martingale ${localize('strategy')}`],
+        content: [localize('An example of Martingale strategy')],
     },
     {
         type: 'media',
         src: getImageLocation('martingale.svg'),
-        alt: `${localize('An example of')} Martingale ${localize('strategy')}`,
+        alt: localize('An example of Martingale strategy'),
     },
     {
         type: 'text',
         content: [
             localize('1. Start with the initial stake. Let’s say 1 USD.'),
-            `${localize('2. Select your')} Martingale ${localize('multiplier. In this example, it is 2.')}`,
+            localize('2. Select your Martingale multiplier. In this example, it is 2.'),
             localize(
                 '3. If the first trade ends in a loss, Deriv Bot will automatically double your stake for the next trade to 2 USD. Deriv Bot will continue to double the stake after every losing trade.'
             ),
@@ -117,7 +115,7 @@ export const MARTINGALE = (): TDescriptionItem[] => [
         type: 'text',
         content: [
             localize(
-                `${localize("If you're about to start trading and haven't established a Maximum Stake as part of your risk management strategy, you can determine how long your funds will last by employing the")} Martingale ${localize('strategy. Simply use this formula.')}`
+                "If you're about to start trading and haven't established a Maximum Stake as part of your risk management strategy, you can determine how long your funds will last by employing the Martingale strategy. Simply use this formula."
             ),
         ],
     },
@@ -125,7 +123,7 @@ export const MARTINGALE = (): TDescriptionItem[] => [
         type: 'media',
         src: getImageLocation('martingale_formula_1.svg'),
         dark_src: getImageLocation('martingale_formula_dark_1.svg'),
-        alt: `Martingale ${localize('formula 1')}`,
+        alt: localize('Martingale formula 1'),
         className: 'formula',
         styles: { height: '6.5rem' },
     },
@@ -136,7 +134,7 @@ export const MARTINGALE = (): TDescriptionItem[] => [
             localize('R is the number of rounds a trader can sustain given a specific loss threshold.'),
             localize('B is the loss threshold.'),
             localize('s is the initial stake.'),
-            `${localize('m is the')} Martingale ${localize('multiplier.')}`,
+            localize('m is the Martingale multiplier.'),
         ],
         className: 'no-margin',
     },
@@ -144,7 +142,7 @@ export const MARTINGALE = (): TDescriptionItem[] => [
         type: 'text',
         content: [
             localize(
-                `${localize('For instance, if a trader has a loss threshold (B) is 1000 USD, with an initial stake (s) is 1 USD, and the')} Martingale ${localize('multiplier (m) is 2, the calculation would be as follows:')}`
+                'For instance, if a trader has a loss threshold (B) is 1000 USD, with an initial stake (s) is 1 USD, and the Martingale multiplier (m) is 2, the calculation would be as follows:'
             ),
         ],
         className: 'top-margin',
@@ -153,7 +151,7 @@ export const MARTINGALE = (): TDescriptionItem[] => [
         type: 'media',
         src: getImageLocation('martingale_formula_2.svg'),
         dark_src: getImageLocation('martingale_formula_dark_2.svg'),
-        alt: `Martingale ${localize('formula 2')}`,
+        alt: localize('Martingale formula 2'),
         className: 'formula',
         styles: { height: '6.5rem' },
     },
@@ -177,7 +175,7 @@ export const MARTINGALE = (): TDescriptionItem[] => [
         type: 'text',
         content: [
             localize(
-                `${localize('The')} Martingale ${localize("strategy in trading may offer substantial gains but also comes with significant risks. With your selected strategy, Deriv Bot provides automated trading with risk management measures like setting initial stake, stake size, maximum stake, profit threshold and loss threshold. It's crucial for traders to assess their risk tolerance, practice in a demo account, and understand the strategy before trading with real money.")}`
+                "The Martingale strategy in trading may offer substantial gains but also comes with significant risks. With your selected strategy, Deriv Bot provides automated trading with risk management measures like setting initial stake, stake size, maximum stake, profit threshold and loss threshold. It's crucial for traders to assess their risk tolerance, practice in a demo account, and understand the strategy before trading with real money."
             ),
         ],
     },

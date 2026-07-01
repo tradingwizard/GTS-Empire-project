@@ -9,7 +9,7 @@
     }
 
     &--100vw {
-        width: 100%;
+        width: 100vw;
     }
 
     &__list {
@@ -70,7 +70,7 @@
         }
 
         &--full-width {
-            width: 100%;
+            width: 100vw;
         }
     }
 
@@ -109,32 +109,18 @@
             position: relative;
 
             &:after {
-                border-bottom: 2px solid #e21e26;
+                border-bottom: 2px solid var(--brand-red-coral);
                 content: '';
                 position: absolute;
                 left: 0;
                 display: block;
                 width: 100%;
-
-                .theme--dark & {
-                    border-bottom-color: #ff444f;
-                    filter: drop-shadow(0 0 4px rgba(226, 30, 38, 0.8));
-                }
             }
         }
 
         &:not(.dc-tabs__active) {
             cursor: pointer;
             color: var(--text-general);
-            transition: color 0.2s ease, text-shadow 0.2s ease;
-
-            &:hover {
-                color: #e21e26;
-                .theme--dark & {
-                    color: #ff444f;
-                    text-shadow: 0 0 8px rgba(226, 30, 38, 0.4);
-                }
-            }
         }
 
         &:not(&--header-fit-content) {
@@ -145,11 +131,6 @@
     &__active {
         font-weight: 700;
         color: var(--text-prominent);
-        transition: color 0.2s ease, text-shadow 0.2s ease;
-
-        .theme--dark & {
-            text-shadow: 0 0 6px rgba(226, 30, 38, 0.3);
-        }
     }
 
     &__active-line {
@@ -161,19 +142,8 @@
 
         /* rtl:end:ignore */
         height: 2px;
-        background: #e21e26;
-        transition: all cubic-bezier(0.4, 0, 0.2, 1) 0.3s;
-
-        // Premium Neon Red Glow optimized for dark screens
-        .theme--dark & {
-            background: #ff444f;
-            box-shadow: 0 0 8px rgba(226, 30, 38, 0.8), 0 0 16px rgba(226, 30, 38, 0.4);
-        }
-
-        .theme--light & {
-            background: #e21e26;
-            box-shadow: none;
-        }
+        background: var(--brand-red-coral);
+        transition: all ease-in-out 0.3s;
 
         &--top {
             bottom: -2px;

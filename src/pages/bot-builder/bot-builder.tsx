@@ -7,7 +7,6 @@ import { useStore } from '@/hooks/useStore';
 import { localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
 import { TBlocklyEvents } from 'Types';
-import { DBOT_TABS } from '@/constants/bot-contents';
 import LoadModal from '../../components/load-modal';
 import SaveModal from '../dashboard/bot-list/save-modal';
 import BotBuilderTourHandler from '../tutorials/dbot-tours/bot-builder-tour';
@@ -110,37 +109,11 @@ const BotBuilder = observer(() => {
         });
     };
 
-    const is_active_bot_listener_registered = React.useRef(false);
-
-    React.useEffect(() => {
-        const workspace = window.Blockly?.derivWorkspace;
-        if (!workspace) return;
-
-        const updateHasActiveBot = () => {
-            const has_blocks = workspace.getTopBlocks().length > 0;
-            blockly_store.setHasActiveBot(has_blocks);
-        };
-
-        if (!is_active_bot_listener_registered.current) {
-            is_active_bot_listener_registered.current = true;
-            // Initial check
-            updateHasActiveBot();
-            workspace.addChangeListener(updateHasActiveBot);
-        }
-
-        return () => {
-            if (is_active_bot_listener_registered.current && workspace) {
-                workspace.removeChangeListener(updateHasActiveBot);
-                is_active_bot_listener_registered.current = false;
-            }
-        };
-    }, [blockly_store, is_loading]);
-
     return (
         <>
             <div
                 className={classNames('bot-builder', {
-                    'bot-builder--active': active_tab === DBOT_TABS.BOT_BUILDER && !is_preview_on_popup,
+                    'bot-builder--active': active_tab === 1 && !is_preview_on_popup,
                     'bot-builder--inactive': is_preview_on_popup,
                     'bot-builder--tour-active': active_tour,
                 })}
@@ -149,7 +122,7 @@ const BotBuilder = observer(() => {
                     <WorkspaceWrapper />
                 </div>
             </div>
-            {active_tab === DBOT_TABS.BOT_BUILDER && <BotBuilderTourHandler is_mobile={!isDesktop} />}
+            {active_tab === 1 && <BotBuilderTourHandler is_mobile={!isDesktop} />}
             {/* removed this outside from toolbar becuase it needs to loaded seperately without dependency */}
             <LoadModal />
             <SaveModal />
