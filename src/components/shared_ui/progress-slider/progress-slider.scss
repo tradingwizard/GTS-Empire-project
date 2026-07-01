@@ -124,7 +124,7 @@
         border-radius: 2px;
         background-clip: padding-box;
         margin: 0.5rem 0 1rem;
-        overflow: hidden;
+      //overflow: hidden;
 
         &--indeterminate {
             background-color: var(--state-active);

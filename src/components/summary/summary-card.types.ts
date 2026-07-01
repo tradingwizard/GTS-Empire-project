@@ -1,6 +1,6 @@
 import { ProposalOpenContract } from '@deriv/api-types';
 
-type TDateType = string | number | undefined;
+type TDateType = string | number | null | undefined;
 
 export type TContractInfo = Omit<
     ProposalOpenContract,
@@ -14,6 +14,9 @@ export type TContractInfo = Omit<
     entry_tick_time?: TDateType;
     exit_tick?: TDateType;
     exit_tick_time?: TDateType;
+    entry_spot?: TDateType;
+    exit_spot?: TDateType;
+    underlying_symbol?: string;
 };
 
 export interface TSummaryCardProps {

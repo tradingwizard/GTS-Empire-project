@@ -1,0 +1,768 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { observer } from 'mobx-react-lite';
+import './dcircles.scss';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+type TSymbol = { symbol: string; display_name: string };
+type THeat = 'hot' | 'warm' | 'neutral' | 'cold';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+const REQ_ACTIVE_SYMBOLS = 1001;
+const REQ_TICKS = 1002;
+const WS_URL = 'wss://api.derivws.com/trading/v1/options/ws/public';
+
+const RING_R = 38;
+const RING_C = 2 * Math.PI * RING_R;
+const RING_MAX_PCT = 16;
+
+// Known pip sizes for common Deriv synthetic symbols
+const KNOWN_PIPS: Record<string, number> = {
+    R_10: 3,
+    R_25: 3,
+    R_50: 2,
+    R_75: 2,
+    R_100: 2,
+    '1HZ10V': 3,
+    '1HZ25V': 3,
+    '1HZ50V': 2,
+    '1HZ75V': 2,
+    '1HZ100V': 2,
+};
+
+const MARKET_NAME_MAP: Record<string, string> = {
+    R_10: 'Volatility 10 Index',
+    R_25: 'Volatility 25 Index',
+    R_50: 'Volatility 50 Index',
+    R_75: 'Volatility 75 Index',
+    R_100: 'Volatility 100 Index',
+    '1HZ10V': 'Volatility 10 (1s) Index',
+    '1HZ15V': 'Volatility 15 (1s) Index',
+    '1HZ25V': 'Volatility 25 (1s) Index',
+    '1HZ30V': 'Volatility 30 (1s) Index',
+    '1HZ50V': 'Volatility 50 (1s) Index',
+    '1HZ75V': 'Volatility 75 (1s) Index',
+    '1HZ90V': 'Volatility 90 (1s) Index',
+    '1HZ100V': 'Volatility 100 (1s) Index',
+};
+
+const getMarketDisplayName = (symbol: string, defaultName?: string): string => {
+    if (MARKET_NAME_MAP[symbol]) {
+        return MARKET_NAME_MAP[symbol];
+    }
+    const cleanSym = symbol.toUpperCase();
+    if (MARKET_NAME_MAP[cleanSym]) {
+        return MARKET_NAME_MAP[cleanSym];
+    }
+    // Parse symbol dynamically if not in map
+    if (cleanSym.startsWith('1HZ')) {
+        const num = cleanSym.replace('1HZ', '').replace('V', '');
+        return `Volatility ${num} (1s) Index`;
+    }
+    if (cleanSym.startsWith('R_')) {
+        const num = cleanSym.replace('R_', '');
+        return `Volatility ${num} Index`;
+    }
+    return defaultName && defaultName !== symbol ? defaultName : symbol;
+};
+
+// Fallback symbol list shown while API loads
+const FALLBACK_SYMBOLS: TSymbol[] = [
+    { symbol: 'R_10', display_name: 'Volatility 10 Index' },
+    { symbol: 'R_25', display_name: 'Volatility 25 Index' },
+    { symbol: 'R_50', display_name: 'Volatility 50 Index' },
+    { symbol: 'R_75', display_name: 'Volatility 75 Index' },
+    { symbol: 'R_100', display_name: 'Volatility 100 Index' },
+    { symbol: '1HZ10V', display_name: 'Volatility 10 (1s) Index' },
+    { symbol: '1HZ25V', display_name: 'Volatility 25 (1s) Index' },
+    { symbol: '1HZ50V', display_name: 'Volatility 50 (1s) Index' },
+    { symbol: '1HZ75V', display_name: 'Volatility 75 (1s) Index' },
+    { symbol: '1HZ100V', display_name: 'Volatility 100 (1s) Index' },
+];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const getHeat = (pct: number): THeat => {
+    if (pct >= 12.5) return 'hot';
+    if (pct >= 10.5) return 'warm';
+    if (pct >= 8.5) return 'neutral';
+    return 'cold';
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
+const DCircles = observer(() => {
+    const persisted = typeof window !== 'undefined' ? localStorage.getItem('dcircles_selected_market') : null;
+    const initialSymbol = persisted && persisted.length ? persisted : 'R_10';
+
+    // Seed pip sizes with known values immediately
+    const wsRef = useRef<WebSocket | null>(null);
+    const subIdRef = useRef<string | null>(null);
+    const selectedSymbolRef = useRef<string>(initialSymbol);
+    const pipSizesRef = useRef<Record<string, number>>(KNOWN_PIPS);
+    const tickCountRef = useRef<number>(1000);
+    const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const reconnTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isDestroyedRef = useRef(false);
+
+    // State — start with fallback symbols immediately (no blank dropdown)
+    const [symbols, setSymbols] = useState<TSymbol[]>(FALLBACK_SYMBOLS);
+    const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol);
+    const [livePrice, setLivePrice] = useState<string | number>('—');
+    const [digitsWindow, setDigitsWindow] = useState<number[]>([]);
+    const [priceWindow, setPriceWindow] = useState<number[]>([]);
+    const [liveLoading, setLiveLoading] = useState(true);
+    const [lastDigit, setLastDigit] = useState<number | null>(null);
+    const [tickInputVal, setTickInputVal] = useState<string>('1000');
+    const [connStatus, setConnStatus] = useState<'connecting' | 'connected' | 'closed' | 'error'>('connecting');
+
+    // ── Digit extraction ────────────────────────────────────────────────────
+    const getDigit = useCallback((val: number | string): number => {
+        const pip = pipSizesRef.current[selectedSymbolRef.current] ?? 2;
+        const s = Number(val).toFixed(pip);
+        return Number(s[s.length - 1]);
+    }, []);
+
+    // ── Core WebSocket bootstrap ────────────────────────────────────────────
+    const connect = useCallback(() => {
+        if (isDestroyedRef.current) return;
+
+        // Close existing socket if any
+        if (wsRef.current) {
+            try {
+                wsRef.current.close();
+            } catch (_) {
+                /* noop */
+            }
+            wsRef.current = null;
+        }
+
+        setConnStatus('connecting');
+        const ws = new WebSocket(WS_URL);
+        wsRef.current = ws;
+
+        // Styled console logger
+        const LOG = {
+            send: (d: any) => console.log('%c[DC ▶ SEND]', 'color:#7f5cff;font-weight:bold', d),
+            recv: (d: any) => console.log('%c[DC ◀ RECV]', 'color:#00b4ff;font-weight:bold', d),
+            info: (m: string, ...a: any[]) => console.info('%c[DC ℹ]', 'color:#00e676;font-weight:bold', m, ...a),
+            warn: (m: string, ...a: any[]) => console.warn('%c[DC ⚠]', 'color:#ffca28;font-weight:bold', m, ...a),
+            error: (m: string, ...a: any[]) => console.error('%c[DC ✖]', 'color:#ff5252;font-weight:bold', m, ...a),
+        };
+
+        // Helper that is always safe — checks readyState — logs every outbound message
+        const safeSend = (payload: Record<string, unknown>) => {
+            if (ws.readyState === WebSocket.OPEN) {
+                LOG.send(payload);
+                ws.send(JSON.stringify(payload));
+            } else {
+                LOG.warn('safeSend skipped — WS not OPEN', { readyState: ws.readyState, payload });
+            }
+        };
+
+        const doSubscribe = (symbol: string) => {
+            if (!symbol) return;
+            if (subIdRef.current) {
+                safeSend({ forget: subIdRef.current });
+                subIdRef.current = null;
+            }
+            setLiveLoading(true);
+            safeSend({
+                ticks_history: symbol,
+                end: 'latest',
+                count: tickCountRef.current,
+                style: 'ticks',
+                subscribe: 1,
+                req_id: REQ_TICKS,
+            });
+        };
+
+        ws.onopen = () => {
+            if (isDestroyedRef.current) {
+                ws.close();
+                return;
+            }
+            LOG.info('WebSocket CONNECTED →', WS_URL);
+            setConnStatus('connected');
+
+            // ① Immediately subscribe to ticks with the known/persisted symbol
+            LOG.info('Auto-subscribing to symbol:', selectedSymbolRef.current);
+            doSubscribe(selectedSymbolRef.current);
+
+            // ② Concurrently fetch full market list to populate the dropdown
+            safeSend({ active_symbols: 'brief', req_id: REQ_ACTIVE_SYMBOLS });
+        };
+
+        ws.onmessage = event => {
+            try {
+                const msg = JSON.parse(event.data as string);
+                // Log every single inbound message (raw)
+                LOG.recv(msg);
+                const { msg_type, req_id, error } = msg;
+
+                if (error) {
+                    LOG.error('API error response:', error);
+                    setLiveLoading(false);
+                    return;
+                }
+
+                // ── active_symbols ────────────────────────────────────────
+                if (msg_type === 'active_symbols') {
+                    const raw: any[] = msg.active_symbols ?? [];
+                    LOG.info(`active_symbols received — ${raw.length} total items`);
+
+                    if (raw.length > 0) {
+                        LOG.info('First symbol item keys:', Object.keys(raw[0]));
+                        LOG.info('First symbol item sample:', raw[0]);
+                    } else {
+                        LOG.warn(
+                            'active_symbols returned EMPTY array — markets will not load from API; using fallback list'
+                        );
+                        return;
+                    }
+
+                    // Field name normaliser — new API may use different names
+                    const normalise = (item: any): TSymbol | null => {
+                        // Try multiple possible field names
+                        const sym: string =
+                            item.symbol ?? item.underlying ?? item.code ?? item.id ?? item.underlying_symbol ?? '';
+                        const name: string =
+                            item.display_name ??
+                            item.name ??
+                            item.description ??
+                            item.verbose_name ??
+                            item.display_underlying ??
+                            sym;
+                        if (!sym) return null;
+                        return { symbol: sym, display_name: getMarketDisplayName(sym, name) };
+                    };
+
+                    const fetched: TSymbol[] = (raw as any[])
+                        .map(normalise)
+                        .filter((i): i is TSymbol => i !== null && /^(R_|1HZ)/.test(i.symbol));
+
+                    LOG.info(`Filtered ${fetched.length} volatile symbols (R_ / 1HZ) out of ${raw.length} total`);
+                    if (fetched.length === 0) {
+                        LOG.warn('NO volatile symbols matched filter — check if symbol names use a different prefix!');
+                        LOG.info(
+                            'All symbols from API:',
+                            raw.map((s: any) => s.symbol ?? s.underlying ?? s.code ?? '?')
+                        );
+                    }
+
+                    // Update pip map — pip field may vary too
+                    const pips: Record<string, number> = { ...KNOWN_PIPS };
+                    raw.forEach((s: any) => {
+                        const sym = s.symbol ?? s.underlying ?? s.code ?? '';
+                        const pip = s.pip ?? s.pip_size ?? s.decimal_places;
+                        if (sym && pip) {
+                            pips[sym] =
+                                typeof pip === 'number' && pip < 1
+                                    ? Math.round(Math.abs(Math.log10(pip)))
+                                    : Number(pip);
+                        }
+                    });
+                    pipSizesRef.current = pips;
+
+                    if (fetched.length > 0) {
+                        const sorted = fetched.sort((a, b) => a.display_name.localeCompare(b.display_name));
+                        setSymbols(sorted);
+
+                        // Only re-subscribe if the current symbol is NOT in the fetched list
+                        const inList = sorted.some(s => s.symbol === selectedSymbolRef.current);
+                        if (!inList) {
+                            const target = sorted.find(s => s.symbol === 'R_10')?.symbol ?? sorted[0]?.symbol;
+                            if (target) {
+                                selectedSymbolRef.current = target;
+                                setSelectedSymbol(target);
+                                doSubscribe(target);
+                            }
+                        }
+                    }
+                }
+
+                // ── history ───────────────────────────────────────────────
+                if (msg_type === 'history' && req_id === REQ_TICKS) {
+                    if (msg.subscription?.id) subIdRef.current = msg.subscription.id;
+
+                    const prices: (number | string)[] = msg.history?.prices ?? [];
+                    LOG.info(
+                        `History received — ${prices.length} prices for '${selectedSymbolRef.current}', sub:`,
+                        msg.subscription?.id
+                    );
+
+                    // Extract pip_size from history response if available
+                    const histPip: number | undefined = msg.pip_size ?? msg.history?.pip_size;
+                    if (histPip !== undefined) {
+                        LOG.info(
+                            `pip_size from history: ${histPip} — updating for symbol '${selectedSymbolRef.current}'`
+                        );
+                        pipSizesRef.current = { ...pipSizesRef.current, [selectedSymbolRef.current]: histPip };
+                    }
+
+                    if (prices.length > 0) {
+                        LOG.info(
+                            'First price sample:',
+                            prices[0],
+                            '→ digit should be:',
+                            String(
+                                Number(prices[0]).toFixed(pipSizesRef.current[selectedSymbolRef.current] ?? 2)
+                            ).slice(-1)
+                        );
+                        const wPrices = prices.map(p => Number(p)).slice(-tickCountRef.current);
+                        // Clear old window before setting new market's data
+                        setPriceWindow(wPrices);
+                        setDigitsWindow(wPrices.map(p => getDigit(p)));
+                        const latest = wPrices[wPrices.length - 1];
+                        if (latest !== undefined) setLivePrice(latest);
+                    } else {
+                        LOG.warn('History response had 0 prices — check symbol or count param');
+                    }
+                    setLiveLoading(false);
+                }
+
+                // ── tick ──────────────────────────────────────────────────
+                if (msg_type === 'tick') {
+                    const t = msg.tick ?? {};
+
+                    // Capture subscription ID from tick or its subscription object
+                    const tickSubId = t.id ?? t.subscription?.id ?? msg.subscription?.id;
+                    if (!subIdRef.current && tickSubId) {
+                        subIdRef.current = tickSubId;
+                    }
+
+                    // New API uses ask/bid — old API uses quote. Support both.
+                    const quote: number | undefined =
+                        t.quote !== undefined
+                            ? Number(t.quote)
+                            : t.ask !== undefined
+                              ? Number(t.ask)
+                              : t.bid !== undefined
+                                ? Number(t.bid)
+                                : undefined;
+
+                    // New API may use 'underlying' instead of 'symbol' in tick
+                    const tickSymbol: string = t.symbol ?? t.underlying ?? t.instrument ?? '';
+
+                    // If API gives us pip_size directly, use it for this symbol
+                    const apiPip: number | undefined = t.pip_size !== undefined ? Number(t.pip_size) : undefined;
+                    if (apiPip !== undefined && tickSymbol) {
+                        pipSizesRef.current = { ...pipSizesRef.current, [tickSymbol]: apiPip };
+                    }
+
+                    // Accept tick if: quote is valid AND (symbol matches OR symbol is empty/unknown)
+                    const symbolMatch =
+                        !tickSymbol || // API didn't send symbol field
+                        tickSymbol === selectedSymbolRef.current || // exact match
+                        tickSubId === subIdRef.current; // same subscription = same market
+
+                    // Only log first 3 ticks to avoid console spam
+                    if ((tickCountRef as any)._tickLogCount === undefined) (tickCountRef as any)._tickLogCount = 0;
+                    if ((tickCountRef as any)._tickLogCount < 3) {
+                        (tickCountRef as any)._tickLogCount++;
+                        LOG.info(
+                            `Tick #${(tickCountRef as any)._tickLogCount} | sym:'${tickSymbol || 'N/A'}' ask/quote:${quote} pip_size:${apiPip ?? 'N/A'} subMatch:${symbolMatch}`
+                        );
+                    }
+
+                    if (quote !== undefined && symbolMatch) {
+                        const digit = getDigit(quote);
+
+                        setPriceWindow(prev => [...prev.slice(-(tickCountRef.current - 1)), quote]);
+                        setDigitsWindow(prev => [...prev.slice(-(tickCountRef.current - 1)), digit]);
+                        setLivePrice(quote);
+                        setLastDigit(digit);
+
+                        if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+                        flashTimerRef.current = setTimeout(() => setLastDigit(null), 700);
+                    } else if (quote === undefined) {
+                        LOG.warn('Tick has no price field (quote/ask/bid all undefined) — full tick obj:', t);
+                    }
+                }
+            } catch (err) {
+                LOG.error('Failed to parse WS message:', err, 'raw data:', event.data?.substring(0, 300));
+            }
+        };
+
+        ws.onerror = event => {
+            LOG.error('WebSocket ERROR event:', event);
+            setConnStatus('error');
+            setLiveLoading(false);
+        };
+
+        ws.onclose = event => {
+            LOG.warn(`WebSocket CLOSED — code:${event.code} reason:'${event.reason}' wasClean:${event.wasClean}`);
+            setConnStatus('closed');
+            setLiveLoading(false);
+            subIdRef.current = null;
+            if (!isDestroyedRef.current) {
+                LOG.info('Scheduling reconnect in 3s…');
+                if (reconnTimerRef.current) clearTimeout(reconnTimerRef.current);
+                reconnTimerRef.current = setTimeout(() => connect(), 3000);
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [getDigit]);
+
+    // ── Mount / Unmount ─────────────────────────────────────────────────────
+    useEffect(() => {
+        isDestroyedRef.current = false;
+        connect();
+
+        // Page Visibility API — reconnect when tab becomes visible again
+        const handleVisibility = () => {
+            if (document.visibilityState === 'visible') {
+                const ws = wsRef.current;
+                const isAlive = ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING);
+                if (!isAlive) {
+                    connect();
+                } else if (ws && ws.readyState === WebSocket.OPEN && !subIdRef.current) {
+                    // WS is live but subscription was lost — re-subscribe
+                    if (subIdRef.current) {
+                        ws.send(JSON.stringify({ forget: subIdRef.current }));
+                        subIdRef.current = null;
+                    }
+                    ws.send(
+                        JSON.stringify({
+                            ticks_history: selectedSymbolRef.current,
+                            end: 'latest',
+                            count: tickCountRef.current,
+                            style: 'ticks',
+                            subscribe: 1,
+                            req_id: REQ_TICKS,
+                        })
+                    );
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibility);
+
+        return () => {
+            isDestroyedRef.current = true;
+            document.removeEventListener('visibilitychange', handleVisibility);
+            if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+            if (reconnTimerRef.current) clearTimeout(reconnTimerRef.current);
+            const ws = wsRef.current;
+            if (ws) {
+                if (subIdRef.current && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ forget: subIdRef.current }));
+                }
+                ws.close();
+                wsRef.current = null;
+            }
+        };
+    }, [connect]);
+
+    // ── Symbol change ───────────────────────────────────────────────────────
+    const handleSymbolChange = useCallback((symbol: string) => {
+        if (!symbol || symbol === selectedSymbolRef.current) return;
+        selectedSymbolRef.current = symbol;
+        setSelectedSymbol(symbol);
+        localStorage.setItem('dcircles_selected_market', symbol);
+
+        const ws = wsRef.current;
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+        if (subIdRef.current) {
+            ws.send(JSON.stringify({ forget: subIdRef.current }));
+            subIdRef.current = null;
+        }
+        setLiveLoading(true);
+        ws.send(
+            JSON.stringify({
+                ticks_history: symbol,
+                end: 'latest',
+                count: tickCountRef.current,
+                style: 'ticks',
+                subscribe: 1,
+                req_id: REQ_TICKS,
+            })
+        );
+    }, []);
+
+    // ── Tick count change ───────────────────────────────────────────────────
+    const applyTickCount = useCallback((newCount: number) => {
+        const clamped = Math.min(5000, Math.max(50, newCount));
+        tickCountRef.current = clamped;
+        setTickInputVal(String(clamped));
+
+        const ws = wsRef.current;
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+        if (subIdRef.current) {
+            ws.send(JSON.stringify({ forget: subIdRef.current }));
+            subIdRef.current = null;
+        }
+        setLiveLoading(true);
+        ws.send(
+            JSON.stringify({
+                ticks_history: selectedSymbolRef.current,
+                end: 'latest',
+                count: clamped,
+                style: 'ticks',
+                subscribe: 1,
+                req_id: REQ_TICKS,
+            })
+        );
+    }, []);
+
+    const handleTickKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            const v = parseInt(tickInputVal, 10);
+            if (!isNaN(v)) applyTickCount(v);
+            (e.target as HTMLInputElement).blur();
+        }
+    };
+
+    // ── Computed stats ──────────────────────────────────────────────────────
+    const digitStats = useMemo(() => {
+        const counts = Array.from({ length: 10 }, (_, d) => ({ digit: d, count: 0, percentage: 0 }));
+        for (const d of digitsWindow) counts[d].count++;
+        const total = digitsWindow.length || 1;
+        return counts.map(item => ({
+            ...item,
+            percentage: Number(((item.count / total) * 100).toFixed(2)),
+        }));
+    }, [digitsWindow]);
+
+    const { maxCount, minCount } = useMemo(() => {
+        if (!digitStats.length) return { maxCount: -1, minCount: -1 };
+        const counts = digitStats.map(s => s.count);
+        return { maxCount: Math.max(...counts), minCount: Math.min(...counts) };
+    }, [digitStats]);
+
+    const hottestDigit = useMemo(() => {
+        if (!digitStats.length) return -1;
+        const sorted = [...digitStats].sort((a, b) => b.count - a.count);
+        return sorted[0].digit;
+    }, [digitStats]);
+
+    const coldestDigit = useMemo(() => {
+        if (!digitStats.length) return -1;
+        const sorted = [...digitStats].sort((a, b) => a.count - b.count);
+        return sorted[0].digit;
+    }, [digitStats]);
+
+    const evenOddStats = useMemo(() => {
+        let even = 0,
+            odd = 0;
+        digitsWindow.forEach(d => {
+            if (d % 2 === 0) even++;
+            else odd++;
+        });
+        const total = digitsWindow.length || 1;
+        const bias = even > odd ? 'EVEN' : odd > even ? 'ODD' : 'NEUTRAL';
+        return { evenPct: (even / total) * 100, oddPct: (odd / total) * 100, bias };
+    }, [digitsWindow]);
+
+    const riseFallStats = useMemo(() => {
+        let rise = 0,
+            fall = 0;
+        for (let i = 1; i < priceWindow.length; i++) {
+            if (priceWindow[i] > priceWindow[i - 1]) rise++;
+            else if (priceWindow[i] < priceWindow[i - 1]) fall++;
+        }
+        const total = rise + fall || 1;
+        const bias = rise > fall ? 'BULLISH' : fall > rise ? 'BEARISH' : 'NEUTRAL';
+        return { rise, fall, risePct: (rise / total) * 100, fallPct: (fall / total) * 100, bias };
+    }, [priceWindow]);
+
+    const last50 = useMemo(() => digitsWindow.slice(-50), [digitsWindow]);
+
+    const last50RF = useMemo(() => {
+        const result: ('R' | 'F')[] = [];
+        const slice = priceWindow.slice(-51);
+        for (let i = 1; i < slice.length; i++) {
+            if (slice[i] > slice[i - 1]) result.push('R');
+            else if (slice[i] < slice[i - 1]) result.push('F');
+        }
+        return result.slice(-50);
+    }, [priceWindow]);
+
+    const isOffline = connStatus === 'closed' || connStatus === 'error';
+    const totalTicks = digitsWindow.length;
+    const formattedPrice =
+        typeof livePrice === 'number'
+            ? livePrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 5 })
+            : livePrice;
+
+    // ── Render ──────────────────────────────────────────────────────────────
+    return (
+        <div className='dcircles-page'>
+            {/* ─── HEADER ─── */}
+            <div className='dcircles-page__header'>
+                <div>
+                    <h2 className='dcircles-page__title'>DCircles Digit Analysis</h2>
+                    <p className='dcircles-page__subtitle'>Live last-digit distribution &amp; pattern engine</p>
+                </div>
+                <div className='dcircles-page__header-right'>
+                    <div className='dcircles-page__price'>
+                        <span className='dcircles-page__price-label'>Live Price</span>
+                        <span className='dcircles-page__price-value'>{formattedPrice}</span>
+                    </div>
+                    <div className={`dcircles-page__status dcircles-page__status--${connStatus}`}>
+                        <span className='dcircles-page__status-dot' />
+                        {connStatus}
+                    </div>
+                </div>
+            </div>
+
+            {/* ─── CONTROLS ─── */}
+            <div className='dcircles-page__controls'>
+                <div className='dcircles-control-group'>
+                    <label htmlFor='dc-symbol'>Market</label>
+                    <div className='dcircles-page__select-wrap'>
+                        <select
+                            id='dc-symbol'
+                            value={selectedSymbol}
+                            onChange={e => handleSymbolChange(e.target.value)}
+                            disabled={symbols.length === 0}
+                        >
+                            {symbols.length === 0 ? (
+                                <option value=''>Loading markets…</option>
+                            ) : (
+                                symbols.map(s => (
+                                    <option key={s.symbol} value={s.symbol}>
+                                        {s.display_name}
+                                    </option>
+                                ))
+                            )}
+                        </select>
+                        {liveLoading && <span className='dcircles-page__spinner' />}
+                    </div>
+                </div>
+
+                <div className='dcircles-control-group'>
+                    <label htmlFor='dc-ticks'>Ticks</label>
+                    <input
+                        id='dc-ticks'
+                        type='number'
+                        value={tickInputVal}
+                        onChange={e => setTickInputVal(e.target.value)}
+                        onBlur={() => {
+                            const v = parseInt(tickInputVal, 10);
+                            if (!isNaN(v)) applyTickCount(v);
+                        }}
+                        onKeyDown={handleTickKeyDown}
+                        min='50'
+                        max='5000'
+                    />
+                </div>
+
+                <div className='dcircles-page__summary-inline'>
+                    <div className='dcircles-badge'>
+                        <span>🔥</span>
+                        <span>Hot</span>
+                        <strong>{hottestDigit >= 0 ? hottestDigit : '—'}</strong>
+                    </div>
+                    <div className='dcircles-badge'>
+                        <span>❄️</span>
+                        <span>Cold</span>
+                        <strong>{coldestDigit >= 0 ? coldestDigit : '—'}</strong>
+                    </div>
+                    <div className='dcircles-badge'>
+                        <span>📊</span>
+                        <span>Sample</span>
+                        <strong>{totalTicks.toLocaleString()}</strong>
+                    </div>
+                </div>
+            </div>
+
+            {isOffline && <div className='dcircles-page__offline'>⚠ Live data unavailable — reconnecting…</div>}
+
+            {/* ─── DIGIT GRID ─── */}
+            <div className='dcircles-grid'>
+                {digitStats.map(({ digit, count, percentage }) => {
+                    const heat = getHeat(percentage);
+                    const isHottest = count === maxCount && maxCount > minCount;
+                    const isLowest = count === minCount && maxCount > minCount;
+                    const isFlash = digit === lastDigit;
+
+                    return (
+                        <div
+                            key={digit}
+                            className={[
+                                'dcircles-card',
+                                `dcircles-card--${heat}`,
+                                isHottest ? 'dcircles-card--highest' : '',
+                                isLowest ? 'dcircles-card--lowest' : '',
+                                isFlash ? 'dcircles-card--flash' : '',
+                            ]
+                                .join(' ')
+                                .trim()}
+                        >
+                            {isFlash && <div className='dcircles-card__cursor'>▼</div>}
+                            <div className='dcircles-card__ring'>
+                                <svg viewBox='0 0 100 100' className='dcircles-card__svg'>
+                                    <circle cx='50' cy='50' r={RING_R} className='dcircles-card__track' />
+                                    <circle
+                                        cx='50'
+                                        cy='50'
+                                        r={RING_R}
+                                        className='dcircles-card__arc'
+                                        strokeDasharray={RING_C}
+                                        strokeDashoffset={RING_C * (1 - Math.min(percentage / RING_MAX_PCT, 1))}
+                                    />
+                                </svg>
+                                <div className='dcircles-card__num'>{digit}</div>
+                            </div>
+                            <div className='dcircles-card__pct-pill'>{percentage}%</div>
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* ─── EVEN / ODD PANEL ─── */}
+            <div className='dcircles-analysis-block'>
+                <div className='dcircles-analysis-block__title'>Even / Odd Pattern</div>
+                <div className='dcircles-analysis-block__bars'>
+                    <div className='dcircles-bar dcircles-bar--even'>
+                        <strong>{evenOddStats.evenPct.toFixed(1)}%</strong>
+                        <span>EVEN</span>
+                    </div>
+                    <div className='dcircles-bar dcircles-bar--odd'>
+                        <strong>{evenOddStats.oddPct.toFixed(1)}%</strong>
+                        <span>ODD</span>
+                    </div>
+                </div>
+                <div className='dcircles-analysis-block__trail-label'>Last 50 Digits Pattern</div>
+                <div className='dcircles-analysis-block__trail'>
+                    {last50.map((d, i) => (
+                        <span
+                            key={i}
+                            className={`dcircles-badge-dot dcircles-badge-dot--${d % 2 === 0 ? 'even' : 'odd'}`}
+                        >
+                            {d % 2 === 0 ? 'E' : 'O'}
+                        </span>
+                    ))}
+                </div>
+            </div>
+
+            {/* ─── RISE / FALL PANEL ─── */}
+            <div className='dcircles-analysis-block'>
+                <div className='dcircles-analysis-block__title'>Market Movement</div>
+                <div className='dcircles-analysis-block__bars'>
+                    <div className='dcircles-bar dcircles-bar--rise'>
+                        <strong>{riseFallStats.risePct.toFixed(1)}%</strong>
+                        <span>RISE</span>
+                    </div>
+                    <div className='dcircles-bar dcircles-bar--fall'>
+                        <strong>{riseFallStats.fallPct.toFixed(1)}%</strong>
+                        <span>FALL</span>
+                    </div>
+                </div>
+                <div className='dcircles-analysis-block__trail-label'>Last 50 Ticks Movement</div>
+                <div className='dcircles-analysis-block__trail'>
+                    {last50RF.map((rf, i) => (
+                        <span
+                            key={i}
+                            className={`dcircles-badge-dot dcircles-badge-dot--${rf === 'R' ? 'rise' : 'fall'}`}
+                        >
+                            {rf}
+                        </span>
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+});
+
+export default DCircles;

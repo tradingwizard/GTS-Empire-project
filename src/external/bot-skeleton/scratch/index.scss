@@ -108,7 +108,7 @@ $colour_toolboxSelected: $black;
 
     .blocklySvg {
         outline: none;
-        overflow: hidden; /* IE overflows by default. */
+      //overflow: hidden; /* IE overflows by default. */
         position: absolute;
         display: block;
     }
@@ -134,7 +134,7 @@ $colour_toolboxSelected: $black;
     }
 
     .blocklyWidgetDiv.fieldTextInput {
-        overflow: hidden;
+      //overflow: hidden;
         border: 1px solid;
         box-sizing: border-box;
         transform-origin: 0 0;
@@ -570,7 +570,7 @@ drag a block and selected text moves instead.
         padding: 3px;
         resize: none;
         display: block;
-        overflow: hidden;
+      //overflow: hidden;
     }
 
     .blocklyCommentDeleteIcon {
@@ -635,7 +635,7 @@ drag a block and selected text moves instead.
         outline: 0;
         padding: 0;
         resize: none;
-        overflow: hidden;
+      //overflow: hidden;
     }
 
     .scratchCommentResizeSE {

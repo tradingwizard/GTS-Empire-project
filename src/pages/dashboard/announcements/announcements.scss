@@ -149,7 +149,7 @@
         border-radius: none;
         box-shadow: none;
         background-color: var(--general-main-2);
-        overflow: hidden;
+      //overflow: hidden;
 
         &:after {
             background-color: var(--general-section-6);
@@ -199,7 +199,7 @@
                 flex-direction: column;
 
                 .dc-text {
-                    overflow: hidden;
+                  //overflow: hidden;
                     white-space: nowrap;
                     text-overflow: ellipsis;
                     width: 32rem;

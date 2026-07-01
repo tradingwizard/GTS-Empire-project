@@ -1,0 +1,2070 @@
+// Color Palette - Trading Platform Theme
+  --tech-bg-primary: #000000;
+  --tech-bg-secondary: #111111;
+  --tech-text-primary: #FFFFFF;
+  --tech-text-secondary: rgba(255, 255, 255, 0.7);
+  --tech-accent-red: #dc2626;
+  --tech-accent-green: #11bb32;
+  
+  // Typography
+  --tech-font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+// Advanced Money Animation Keyframes (same as landing page)
+// Continuous dollar falling animation
+@keyframes money-fall {
+  0% {
+    transform: translateY(-100px) rotate(0deg);
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(calc(100vh + 200px)) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.loading-screen {
+  // Money elements container
+  &__money-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  //overflow: hidden;
+    z-index: 5;
+    pointer-events: none;
+  }
+  
+  // Individual money element
+  &__money {
+    position: absolute;
+    top: -100px;
+    animation: money-fall linear infinite;
+    z-index: 5;
+    user-select: none;
+  }
+}
+
+@keyframes money-spiral {
+  0% {
+    transform: translateY(-100vh) translateX(0) rotate(0deg) scale(0.3);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-80vh) translateX(20px) rotate(36deg) scale(1);
+  }
+  25% {
+    transform: translateY(-50vh) translateX(-30px) rotate(90deg) scale(1.2);
+  }
+  50% {
+    transform: translateY(0vh) translateX(40px) rotate(180deg) scale(1);
+  }
+  75% {
+    transform: translateY(50vh) translateX(-20px) rotate(270deg) scale(1.1);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(80vh) translateX(10px) rotate(324deg) scale(1);
+  }
+  100% {
+    transform: translateY(100vh) translateX(0) rotate(360deg) scale(0.3);
+    opacity: 0;
+  }
+}
+
+@keyframes money-wave {
+  0% {
+    transform: translateY(-100vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  25% {
+    transform: translateY(-50vh) translateX(30px) rotate(90deg);
+  }
+  50% {
+    transform: translateY(0vh) translateX(-30px) rotate(180deg);
+  }
+  75% {
+    transform: translateY(50vh) translateX(30px) rotate(270deg);
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) translateX(0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes money-zigzag {
+  0% {
+    transform: translateY(-100vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-80vh) translateX(50px) rotate(45deg);
+  }
+  30% {
+    transform: translateY(-40vh) translateX(-50px) rotate(135deg);
+  }
+  50% {
+    transform: translateY(0vh) translateX(50px) rotate(225deg);
+  }
+  70% {
+    transform: translateY(40vh) translateX(-50px) rotate(315deg);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(80vh) translateX(50px) rotate(405deg);
+  }
+  100% {
+    transform: translateY(100vh) translateX(0) rotate(450deg);
+    opacity: 0;
+  }
+}
+
+@keyframes money-bounce {
+  0% {
+    transform: translateY(-100vh) scale(1);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  20% {
+    transform: translateY(-60vh) scale(1.3);
+  }
+  30% {
+    transform: translateY(-40vh) scale(0.8);
+  }
+  40% {
+    transform: translateY(-20vh) scale(1.2);
+  }
+  50% {
+    transform: translateY(0vh) scale(0.9);
+  }
+  60% {
+    transform: translateY(20vh) scale(1.1);
+  }
+  70% {
+    transform: translateY(40vh) scale(0.95);
+  }
+  80% {
+    transform: translateY(60vh) scale(1.05);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(80vh) scale(1);
+  }
+  100% {
+    transform: translateY(100vh) scale(0.5);
+    opacity: 0;
+  }
+}
+
+@keyframes money-particle-float {
+  0% {
+    transform: translateY(0) rotate(0deg) scale(1);
+    opacity: 0.2;
+  }
+  25% {
+    transform: translateY(-15px) rotate(90deg) scale(1.1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-30px) rotate(180deg) scale(0.9);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateY(-15px) rotate(270deg) scale(1.05);
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateY(0) rotate(360deg) scale(1);
+    opacity: 0.2;
+  }
+}
+
+// Loading Screen Styles
+:root {
+  // Color Palette - Trading Platform Theme
+  --tech-bg-primary: #000000;
+  --tech-bg-secondary: #111111;
+  --tech-text-primary: #FFFFFF;
+  --tech-text-secondary: rgba(255, 255, 255, 0.7);
+  --tech-accent-red: #dc2626;
+  --tech-accent-green: #11bb32;
+  
+  // Typography
+  --tech-font-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+@keyframes pulsate {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+    filter: brightness(1.2);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0.8;
+    filter: brightness(1);
+  }
+}
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 0.7;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes glow {
+  0% {
+    box-shadow: 0 0 5px var(--tech-accent-green);
+  }
+  50% {
+    box-shadow: 0 0 15px var(--tech-accent-green), 0 0 30px rgba(17, 187, 50, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 5px var(--tech-accent-green);
+  }
+}
+
+// Main loading screen container
+.loading-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: var(--tech-bg-primary);
+  z-index: 9999;
+  font-family: var(--tech-font-primary);
+  animation: fade-in 0.5s ease-in-out;
+//overflow: hidden;
+  
+  // Advanced Money Rain System
+  &__money-rain {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    perspective: 1000px;
+  }
+  
+  &__money-symbol {
+    position: absolute;
+    top: -100px;
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: var(--tech-accent-green);
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    text-shadow: 0 0 15px currentColor;
+    will-change: transform, opacity;
+    
+    // Different animation types
+    &--fall {
+      animation-name: money-fall;
+      color: var(--tech-accent-green);
+    }
+    
+    &--spiral {
+      animation-name: money-spiral;
+      color: var(--tech-accent-red);
+    }
+    
+    &--wave {
+      animation-name: money-wave;
+      color: #ffd700;
+    }
+    
+    &--zigzag {
+      animation-name: money-zigzag;
+      color: #ff6b35;
+    }
+    
+    &--bounce {
+      animation-name: money-bounce;
+      color: #9d4edd;
+    }
+    
+    // Enhanced visual effects
+    &:nth-child(2n) {
+      filter: brightness(1.2) saturate(1.1);
+    }
+    
+    &:nth-child(3n) {
+      text-shadow: 0 0 25px currentColor, 0 0 50px currentColor;
+    }
+    
+    &:nth-child(4n) {
+      filter: hue-rotate(30deg) brightness(1.05);
+    }
+    
+    &:nth-child(5n) {
+      animation-direction: reverse;
+    }
+  }
+  
+  // Floating Money Particles
+  &__money-particles {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+  
+  &__money-particle {
+    position: absolute;
+    top: 30%;
+    font-size: 1.8rem;
+    color: rgba(255, 215, 0, 0.25);
+    animation: money-particle-float 5s ease-in-out infinite;
+    filter: blur(0.5px);
+    
+    &:nth-child(odd) {
+      animation-direction: reverse;
+      color: rgba(220, 38, 38, 0.2);
+    }
+    
+    &:nth-child(3n) {
+      animation-duration: 7s;
+      color: rgba(17, 187, 50, 0.2);
+    }
+  }
+  
+  // Background element with gradient
+  &__background {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+      linear-gradient(135deg, rgba(220, 38, 38, 0.05) 0%, rgba(17, 187, 50, 0.05) 100%),
+      linear-gradient(rgba(17, 187, 50, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(220, 38, 38, 0.03) 1px, transparent 1px);
+    background-size: 200% 200%, 20px 20px, 20px 20px;
+    animation: gradient-shift 15s ease infinite;
+    opacity: 0.6;
+    z-index: -1;
+    &__background::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0) 40%, rgba(0, 0, 0, 0.55) 100%);
+      pointer-events: none;
+      z-index: -1;
+    }
+  }
+  
+  // Main container
+  &__container {
+    width: 90%;
+    max-width: 800px;
+    height: 90vh;
+    max-height: 600px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+  }
+  
+  // Content wrapper
+  &__content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 2rem;
+    background-color: rgba(0, 0, 0, 0.7);
+    border: 1px solid rgba(17, 187, 50, 0.2);
+    border-radius: 12px;
+    box-shadow: 0 0 30px rgba(17, 187, 50, 0.1);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  
+  // Header section with logo
+  &__header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 2rem;
+  }
+  
+  // Belex image container
+  &__belex-image {
+    margin-bottom: 1.5rem;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  // Belex logo with pulsating animation
+  &__belex-logo {
+    width: 120px;
+    height: auto;
+    max-width: 150px;
+    animation: pulsate 2s ease-in-out infinite, float 6s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(220, 38, 38, 0.3));
+    transition: all 0.3s ease;
+    
+    &:hover {
+      animation-duration: 1s;
+      filter: drop-shadow(0 0 20px rgba(220, 38, 38, 0.5));
+    }
+  }
+  
+  // Logo
+  &__logo {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--tech-accent-red);
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(220, 38, 38, 0.5);
+    animation: float 6s ease-in-out infinite, pulse 3s infinite;
+    position: relative;
+    display: inline-block;
+  }
+  
+  // Tagline
+  &__tagline {
+    font-size: 1rem;
+    color: var(--tech-text-secondary);
+    letter-spacing: 1.5px;
+    margin-top: 0.5rem;
+    text-transform: uppercase;
+  }
+  
+  // Main content area
+  &__main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 2rem 0;
+  }
+  
+  // Loading title
+  &__title {
+    color: var(--tech-accent-red);
+    font-size: 1.75rem;
+    margin-bottom: 2.5rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    text-align: center;
+    position: relative;
+    display: inline-block;
+    align-self: center;
+    
+    &:after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 0;
+      width: 100%;
+      height: 2px;
+      background: linear-gradient(90deg, var(--tech-accent-red), var(--tech-accent-green));
+      background-size: 200% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-shadow: 0 0 10px rgba(220, 38, 38, 0.25), 0 0 18px rgba(17, 187, 50, 0.2);
+      animation: gradient-shift 12s ease infinite;
+    }
+  }
+  
+  // Progress wrapper
+  &__progress-wrapper {
+    width: 100%;
+    margin: 0 auto;
+  }
+  
+  // Progress bar container
+  &__progress-container {
+    width: 100%;
+    height: 8px;
+    background-color: var(--tech-accent-dim);
+    border-radius: 4px;
+    position: relative;
+    margin-bottom: 2rem;
+  }
+  
+  // Progress bar fill
+  &__progress-fill {
+    height: 100%;
+    background-color: var(--tech-accent-green);
+    border-radius: 4px;
+    transition: width 0.3s ease-out;
+    box-shadow: 0 0 8px var(--tech-accent-green);
+    animation: glow 2s infinite;
+    background-image: linear-gradient(45deg, 
+      rgba(255, 255, 255, 0.15) 25%, 
+      transparent 25%, 
+      transparent 50%, 
+      rgba(255, 255, 255, 0.15) 50%, 
+      rgba(255, 255, 255, 0.15) 75%, 
+      transparent 75%, 
+      transparent);
+    background-size: 20px 20px;
+    animation: glow 2s infinite, progress-scan 1s linear infinite;
+  }
+  
+  // Progress markers
+  &__progress-markers {
+    display: flex;
+    justify-content: space-between;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  // Individual progress marker
+  &__progress-marker {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    
+    &--active {
+      .loading-screen__marker-dot {
+        transform: scale(1.25);
+        background: radial-gradient(circle at center, var(--tech-accent-green) 0%, rgba(17, 187, 50, 0.8) 60%, rgba(17, 187, 50, 0.2) 100%);
+        box-shadow: 0 0 10px var(--tech-accent-green), 0 0 18px rgba(17, 187, 50, 0.5);
+        animation: marker-pulse 1.6s ease-in-out infinite;
+      }
+      .loading-screen__marker-label {
+        color: var(--tech-accent-green);
+        text-shadow: 0 0 8px rgba(17, 187, 50, 0.45);
+      }
+    }
+  }
+  
+  // Marker dot
+  &__marker-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--tech-accent-dim);
+    border-radius: 50%;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+  }
+  
+  // Marker label
+  &__marker-label {
+    position: absolute;
+    top: 15px;
+    font-size: 0.75rem;
+    color: var(--tech-text-secondary);
+    transition: color 0.3s ease;
+  }
+  
+  // Progress info section
+  &__progress-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.5rem;
+  }
+  
+  // Progress status
+  &__progress-status {
+    display: flex;
+    align-items: center;
+  }
+  
+  // Status icon - removed
+  &__status-icon {
+    display: none;
+  }
+  
+  // Status text
+  &__status-text {
+    color: var(--tech-text-secondary);
+    font-size: 0.875rem;
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;
+    right: 0;
+    top: 0;
+    color: var(--tech-text-secondary);
+    animation: dots 1.2s steps(4, end) infinite;
+  }
+    position: relative;
+    padding-right: 1rem;
+  }
+  &__status-text::after {
+    content: '...';
+    position: absolute;

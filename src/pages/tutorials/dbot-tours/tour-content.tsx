@@ -92,7 +92,7 @@ export const DBOT_ONBOARDING = [
                 step_index={4}
             />
         ),
-        placement: isDbotRTL() ? 'left' : 'right',
+        placement: isDbotRTL() ? 'right' : 'left',
         ...joyride_props,
         disableOverlay: false,
     },
@@ -100,7 +100,7 @@ export const DBOT_ONBOARDING = [
         target: '.dc-drawer__container',
         content: (
             <TourSteps
-                label={<Localize i18n_default_text='Check your bot’s performance' />}
+                label={<Localize i18n_default_text="Check your bot's performance" />}
                 content={[
                     <Localize
                         key='check bot performance'
@@ -111,7 +111,7 @@ export const DBOT_ONBOARDING = [
                 step_index={5}
             />
         ),
-        placement: isDbotRTL() ? 'right' : 'left',
+        placement: isDbotRTL() ? 'left' : 'right',
         ...joyride_props,
         disableOverlay: false,
     },
@@ -141,7 +141,7 @@ export const DBOT_ONBOARDING = [
                 label={<Localize i18n_default_text='Want to retake the tour?' />}
                 content={[
                     <Text key={`${0}-id-tutorials`} as='p'>
-                        <Localize i18n_default_text={`Head to the Tutorials tab to do so.`} />
+                        <Localize i18n_default_text='Head to the Tutorials tab to do so.' />
                     </Text>,
                 ]}
                 step_index={7}
@@ -391,42 +391,37 @@ export const BOT_BUILDER_TOUR = [
     {
         target: '.animation__wrapper',
         content: <Step1 show_label />,
-        placement: isDbotRTL() ? 'bottom' : 'right',
+        placement: isDbotRTL() ? 'right' : 'left',
         ...joyride_props,
     },
     {
         target: '.animation__wrapper',
         content: <Step1A />,
-        placement: isDbotRTL() ? 'bottom' : 'right',
-
+        placement: isDbotRTL() ? 'right' : 'left',
         ...joyride_props,
     },
     {
         target: '.animation__wrapper',
         content: <Step2 show_label />,
-        placement: isDbotRTL() ? 'bottom' : 'right',
-
+        placement: isDbotRTL() ? 'right' : 'left',
         ...joyride_props,
     },
     {
         target: '.animation__wrapper',
         content: <Step3 show_label />,
-        placement: isDbotRTL() ? 'bottom' : 'right',
-
+        placement: isDbotRTL() ? 'right' : 'left',
         ...joyride_props,
     },
     {
         target: '.animation__wrapper',
         content: <Step4 show_label />,
-        placement: isDbotRTL() ? 'bottom' : 'right',
-
+        placement: isDbotRTL() ? 'right' : 'left',
         ...joyride_props,
     },
     {
         target: '.animation__wrapper',
         content: <Step5 show_label />,
-        placement: isDbotRTL() ? 'bottom' : 'right',
-
+        placement: isDbotRTL() ? 'right' : 'left',
         ...joyride_props,
     },
     {
@@ -450,7 +445,7 @@ export const BOT_BUILDER_MOBILE: TMobileTourConfig[] = [
         header: <Localize i18n_default_text='Step 1' />,
         content: [
             <span key='step-1-wrapper'>
-                <Localize key='step-1' i18n_default_text={`First, click the Import icon on the tool bar.`} />
+                <Localize key='step-1' i18n_default_text='First, click the Import icon on the tool bar.' />
             </span>,
         ],
         tour_step_key: 1,
@@ -461,7 +456,7 @@ export const BOT_BUILDER_MOBILE: TMobileTourConfig[] = [
             <span key='step-2-wrapper'>
                 <Localize
                     key='step-2'
-                    i18n_default_text={`Next, import your bot directly from your mobile device or from Google Drive.`}
+                    i18n_default_text='Next, import your bot directly from your mobile device or from Google Drive.'
                 />
             </span>,
         ],
@@ -473,7 +468,7 @@ export const BOT_BUILDER_MOBILE: TMobileTourConfig[] = [
             <span key='step-3-wrapper'>
                 <Localize
                     key='step-3'
-                    i18n_default_text={`Once imported, you will see a preview of the bot on the workspace. Click run to start trading with this bot.`}
+                    i18n_default_text='Once imported, you will see a preview of the bot on the workspace. Click run to start trading with this bot.'
                 />
             </span>,
         ],
@@ -483,12 +478,12 @@ export const BOT_BUILDER_MOBILE: TMobileTourConfig[] = [
 
 export const DBOT_ONBOARDING_MOBILE: TMobileTourConfig[] = [
     {
-        header: <Localize i18n_default_text='Welcome to GTS Empire' />,
+        header: <Localize i18n_default_text='Welcome to Deriv Bot' />,
         content: [
             <span key='get-started-on-deriv-bot-wrapper'>
                 <Localize
                     key='get-started-on-deriv-bot'
-                    i18n_default_text='Let’s take a quick tour to discover how GTS Empire works. Press <0>Start</0> to begin.'
+                    i18n_default_text='Let’s take a quick tour to discover how Deriv Bot works. Press <0>Start</0> to begin.'
                     components={[<strong key={0} />]}
                 />
             </span>,
@@ -556,7 +551,6 @@ export const DBOT_ONBOARDING_MOBILE: TMobileTourConfig[] = [
                     key='check-your-bots-performance'
                     i18n_default_text='See how your bot is doing in real-time.'
                 />
-                ,
             </span>,
         ],
         tour_step_key: 6,
@@ -591,7 +585,7 @@ export const getTourDialogInfo = (is_mobile: boolean) => {
     return is_mobile ? (
         <Localize
             key='tour-dialog-info-mobile'
-            i18n_default_text='Here’s a quick guide on how to use GTS Empire on the go.'
+            i18n_default_text='Here’s a quick guide on how to use Deriv Bot on the go.'
         />
     ) : (
         <Localize key='tour-dialog-info-desktop' i18n_default_text='Learn how to build a bot with a simple strategy.' />
@@ -611,7 +605,7 @@ export const getTourDialogAction = (is_mobile: boolean) => {
 };
 
 export const onboarding_tour_header = (
-    <Localize key='onboarding-tour-header' i18n_default_text='Welcome to GTS Empire' />
+    <Localize key='onboarding-tour-header' i18n_default_text='Welcome to Deriv Bot' />
 );
 
 export const getBotBuilderTourHeader = (is_mobile: boolean) => {

@@ -1,0 +1,80 @@
+@use 'components/shared/styles/constants' as *;
+@use 'components/shared/styles/mixins' as *;
+
+.db-action-buttons {
+    position: fixed;
+    bottom: 2rem;
+    left: 25.6rem; // Default desktop offset (toolbox width + some margin)
+    z-index: 1000;
+    pointer-events: none; // Allow clicks to pass through to workspace unless clicking children
+
+    &__container {
+        display: flex;
+        gap: 1.2rem;
+        pointer-events: auto;
+    }
+
+    &--mobile {
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        padding: 0.8rem 1.6rem;
+        background: var(--general-main-1);
+        border-top: 1px solid var(--general-section-1);
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+
+        .db-action-buttons__container {
+            width: 100%;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .toolbar__btn {
+            flex: 1;
+            max-width: 16rem;
+            height: 4rem !important;
+            border-radius: 8px;
+        }
+    }
+
+    &__copy-trade {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.8rem 1.2rem;
+        background: var(--general-section-1);
+        border-radius: 8px;
+        min-width: 14rem;
+        height: 4rem;
+        border: 1px solid var(--general-section-2);
+
+        &-label {
+            color: var(--text-prominent);
+            white-space: nowrap;
+            margin-right: 1.2rem;
+        }
+    }
+
+    @include mobile-or-tablet-screen {
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        padding: 0.8rem 1.6rem;
+        background: var(--general-main-1);
+        border-top: 1px solid var(--general-section-1);
+        box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
+
+        .db-action-buttons__container {
+            width: 100%;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .toolbar__btn {
+            flex: 1;
+            max-width: 16rem;
+            height: 4rem !important;
+            border-radius: 8px;
+        }
+    }
+}

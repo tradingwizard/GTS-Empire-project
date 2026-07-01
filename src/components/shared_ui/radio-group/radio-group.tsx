@@ -5,7 +5,7 @@ import Text from '../text';
 type TItem = React.HTMLAttributes<HTMLDivElement> & {
     id?: string;
     value: string;
-    label: string;
+    label: React.ReactNode;
     disabled?: boolean;
     hidden?: boolean;
     has_error?: boolean;

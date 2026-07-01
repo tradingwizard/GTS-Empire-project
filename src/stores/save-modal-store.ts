@@ -1,7 +1,7 @@
 import localForage from 'localforage';
 import LZString from 'lz-string';
 import { action, makeObservable, observable } from 'mobx';
-import { MAX_STRATEGIES } from '@/constants/bot-contents';
+import { DBOT_TABS, MAX_STRATEGIES } from '@/constants/bot-contents';
 import { button_status } from '@/constants/button-status';
 import {
     getSavedWorkspaces,
@@ -25,13 +25,11 @@ interface ISaveModalStore {
     button_status: { [key: string]: string } | number;
     bot_name: { [key: string]: string } | string;
     toggleSaveModal: () => void;
-    validateBotName: (values: string) => { [key: string]: string };
+    validateBotName: (values: { bot_name: string }) => { [key: string]: string };
     onConfirmSave: ({ is_local, save_as_collection, bot_name }: IOnConfirmProps) => void;
     updateBotName: (bot_name: string) => void;
     setButtonStatus: (status: { [key: string]: string } | string | number) => void;
 }
-
-const Blockly = window.Blockly;
 
 export default class SaveModalStore implements ISaveModalStore {
     root_store: RootStore;
@@ -63,8 +61,8 @@ export default class SaveModalStore implements ISaveModalStore {
         this.is_save_modal_open = !this.is_save_modal_open;
     };
 
-    validateBotName = (values: string): { [key: string]: string } => {
-        const errors = {};
+    validateBotName = (values: { bot_name: string }): { [key: string]: string } => {
+        const errors: { bot_name?: string } = {};
 
         if (values.bot_name.trim() === '') {
             errors.bot_name = localize('Strategy name cannot be empty');
@@ -94,7 +92,7 @@ export default class SaveModalStore implements ISaveModalStore {
 
             const workspace_structure = {
                 id: workspace_id,
-                xml: window.Blockly.Xml.domToText(xml),
+                xml: window.Blockly.Xml.domToText(xml as any),
                 name: bot_name,
                 timestamp: Date.now(),
                 save_type,
@@ -109,7 +107,7 @@ export default class SaveModalStore implements ISaveModalStore {
 
             workspace
                 .sort((a: TStrategy, b: TStrategy) => {
-                    return new Date(a.timestamp) - new Date(b.timestamp);
+                    return Number(new Date(a.timestamp)) - Number(new Date(b.timestamp));
                 })
                 .reverse();
 
@@ -138,7 +136,7 @@ export default class SaveModalStore implements ISaveModalStore {
         const { saveFile } = google_drive;
         let xml;
         let main_strategy = null;
-        if (active_tab === 1) {
+        if (active_tab === DBOT_TABS.BOT_BUILDER) {
             xml = window.Blockly?.Xml?.workspaceToDom(window.Blockly?.derivWorkspace);
         } else {
             const recent_files = await getSavedWorkspaces();
@@ -147,8 +145,8 @@ export default class SaveModalStore implements ISaveModalStore {
             main_strategy.save_type = is_local ? save_types.LOCAL : save_types.GOOGLE_DRIVE;
             xml = window.Blockly.utils.xml.textToDom(main_strategy.xml);
         }
-        xml.setAttribute('is_dbot', 'true');
-        xml.setAttribute('collection', save_as_collection ? 'true' : 'false');
+        (xml as Element).setAttribute('is_dbot', 'true');
+        (xml as Element).setAttribute('collection', save_as_collection ? 'true' : 'false');
 
         if (is_local) {
             save(bot_name, save_as_collection, xml);
@@ -163,9 +161,15 @@ export default class SaveModalStore implements ISaveModalStore {
 
         this.updateBotName(bot_name);
 
-        if (active_tab === 0) {
-            const workspace_id = selected_strategy.id ?? Blockly?.utils?.genUid();
-            await this.addStrategyToWorkspace(workspace_id, is_local, save_as_collection, bot_name, xml);
+        if (active_tab === DBOT_TABS.DASHBOARD) {
+            const workspace_id = selected_strategy.id ?? (window.Blockly as any)?.utils?.idGenerator?.genUid();
+            await this.addStrategyToWorkspace(
+                workspace_id,
+                is_local,
+                save_as_collection,
+                bot_name,
+                window.Blockly.Xml.domToText(xml as any)
+            );
             if (main_strategy) await loadStrategyToBuilder(main_strategy);
         } else {
             await saveWorkspaceToRecent(xml, is_local ? save_types.LOCAL : save_types.GOOGLE_DRIVE);
@@ -188,6 +192,6 @@ export default class SaveModalStore implements ISaveModalStore {
     };
 
     setButtonStatus = (status: { [key: string]: string } | string | number) => {
-        this.button_status = status;
+        this.button_status = status as any;
     };
 }

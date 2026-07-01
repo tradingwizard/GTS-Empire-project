@@ -14,12 +14,15 @@
         height: 60%;
         width: 0.6rem;
         display: inline-block;
+        background-color: #e21e26;
+        box-shadow: 0 0 6px rgba(226, 30, 38, 0.4);
 
         @include createBarspinnerAnimation(5, 1.2s, 0.1);
     }
 
     &--dark .barspinner__rect {
-        background-color: var(--brand-secondary);
+        background-color: #ff444f;
+        box-shadow: 0 0 8px rgba(226, 30, 38, 0.7);
     }
 }
 
@@ -62,7 +65,8 @@
         margin: 5rem auto;
 
         &--rect {
-            background-color: var(--brand-secondary);
+            background-color: #e21e26;
+            box-shadow: 0 0 6px rgba(226, 30, 38, 0.4);
         }
     }
 }

@@ -1,6 +1,5 @@
 export * from './auth-status-codes';
 export * from './barriers';
-export * from './content_flags';
 export * from './contract';
 export * from './default-options';
 export * from './error';
@@ -8,3 +7,4 @@ export * from './jurisdictions-config';
 export * from './mt5-login-list-status';
 export * from './poi-failure-codes';
 export * from './signup_fields';
+export * from './content_flags';

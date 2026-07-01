@@ -1,0 +1,194 @@
+.dtrader-redirect-page {
+    padding: 2rem;
+    padding-bottom: 18rem; /* Fit nicely above bottom panels */
+    height: 100%;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
+
+    &__overlay {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at center, rgba(20, 10, 15, 0.4) 0%, rgba(10, 5, 8, 0.95) 100%);
+        z-index: 0;
+    }
+
+    .dtrader-redirect-card {
+        position: relative;
+        z-index: 1;
+        max-width: 520px;
+        width: 100%;
+        padding: 4rem;
+        background: rgba(15, 15, 20, 0.65);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border: 1px solid rgba(226, 30, 38, 0.15);
+        border-radius: 3.2rem;
+        box-shadow: 
+            0 25px 50px -12px rgba(0, 0, 0, 0.6),
+            0 0 30px rgba(226, 30, 38, 0.05);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 2.4rem;
+        animation: cardFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+
+        &__logo {
+            margin-bottom: 0.5rem;
+
+            .logo-glowing-ring {
+                position: relative;
+                width: 72px;
+                height: 72px;
+                background: linear-gradient(135deg, #e21e26 0%, #991b1b 100%);
+                border-radius: 50%;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                box-shadow: 
+                    0 0 20px rgba(226, 30, 38, 0.6),
+                    inset 0 0 10px rgba(255, 255, 255, 0.2);
+                animation: logoPulse 2s infinite ease-in-out;
+
+                &::after {
+                    content: '';
+                    position: absolute;
+                    inset: -6px;
+                    border: 2px dashed rgba(226, 30, 38, 0.3);
+                    border-radius: 50%;
+                    animation: spinDashed 12s linear infinite;
+                }
+
+                .logo-text {
+                    font-size: 3.2rem;
+                    font-weight: 900;
+                    color: #fff;
+                    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+                    font-family: 'Outfit', sans-serif;
+                }
+            }
+        }
+
+        &__title {
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin: 0;
+            background: linear-gradient(135deg, #fff 40%, #ffcbd7 100%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.05rem;
+        }
+
+        &__subtitle {
+            font-size: 1.4rem;
+            color: #94a3b8;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        &__prompt-box {
+            background: rgba(226, 30, 38, 0.04);
+            border-left: 4px solid #e21e26;
+            border-radius: 1.2rem;
+            padding: 1.8rem 2rem;
+            text-align: left;
+            width: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+
+            .prompt-text {
+                color: #e2e8f0;
+                font-size: 1.35rem;
+                font-weight: 600;
+                margin: 0;
+            }
+
+            .prompt-subtext {
+                color: #64748b;
+                font-size: 1.2rem;
+                line-height: 1.4;
+                margin: 0;
+            }
+        }
+
+        &__button {
+            width: 100%;
+            padding: 1.6rem;
+            background: linear-gradient(135deg, #e21e26 0%, #b91c1c 100%);
+            color: #fff;
+            font-weight: 800;
+            font-size: 1.5rem;
+            border: none;
+            border-radius: 1.6rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            box-shadow: 0 10px 25px rgba(226, 30, 38, 0.3);
+
+            &:hover {
+                transform: translateY(-2px);
+                box-shadow: 
+                    0 15px 30px rgba(226, 30, 38, 0.4),
+                    0 0 15px rgba(226, 30, 38, 0.2);
+                background: linear-gradient(135deg, #ff444f 0%, #e21e26 100%);
+            }
+
+            &:active {
+                transform: translateY(1px);
+            }
+        }
+
+        &__footer {
+            font-size: 1.1rem;
+            color: #475569;
+            margin-top: 1rem;
+        }
+    }
+}
+
+@keyframes cardFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes logoPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 
+            0 0 20px rgba(226, 30, 38, 0.6),
+            0 0 40px rgba(226, 30, 38, 0.1);
+    }
+    50% {
+        transform: scale(1.04);
+        box-shadow: 
+            0 0 30px rgba(226, 30, 38, 0.8),
+            0 0 50px rgba(226, 30, 38, 0.3);
+    }
+}
+
+@keyframes spinDashed {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}

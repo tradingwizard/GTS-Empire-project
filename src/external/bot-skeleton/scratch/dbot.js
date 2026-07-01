@@ -10,27 +10,7 @@ import main_xml from './xml/main.xml';
 import { forgetAccumulatorsProposalRequest } from './accumulators-proposal-handler';
 import { loadBlockly } from './blockly';
 import DBotStore from './dbot-store';
-import { getContractTypeOptions } from './shared';
 import { isAllRequiredBlocksEnabled, updateDisabledBlocks, validateErrorOnBlockDelete } from './utils';
-
-const isValidDropdownOption = option => Array.isArray(option) && option[0] && option[1] && option[1] !== 'na';
-
-const isDebugDeriv = () =>
-    typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug_deriv');
-
-const debugDeriv = (label, payload) => {
-    if (!isDebugDeriv()) return;
-    // eslint-disable-next-line no-console
-    console.info(`[debug_deriv] ${label}`, payload);
-};
-
-const getSafeDropdownValue = (options, current_value) => {
-    if (options.some(option => isValidDropdownOption(option) && option[1] === current_value)) {
-        return current_value;
-    }
-
-    return options.find(isValidDropdownOption)?.[1] || options[0]?.[1] || '';
-};
 
 class DBot {
     constructor() {
@@ -51,87 +31,6 @@ class DBot {
 
         // eslint-disable-next-line @typescript-eslint/no-this-alias
         var that = this;
-        const refreshContractTypeDropdown = (top_parent_block, trade_type, event_group, preserve_current = true) => {
-            const contract_type_block = top_parent_block?.getChildByType?.('trade_definition_contracttype');
-            const contract_type_field = contract_type_block?.getField?.('TYPE_LIST');
-            if (!contract_type_field || !trade_type || trade_type === 'na') return;
-
-            const contract_type_options = [];
-            const available_contract_types = getContractTypeOptions('both', trade_type);
-
-            if (available_contract_types.length > 1) {
-                contract_type_options.push(['Both', 'both']);
-            }
-            contract_type_options.push(...available_contract_types);
-
-            const safe_contract_type = getSafeDropdownValue(
-                contract_type_options,
-                preserve_current ? contract_type_field.getValue() : undefined
-            );
-            contract_type_field.updateOptions(contract_type_options, {
-                default_value: safe_contract_type,
-                should_pretend_empty: true,
-                event_group,
-            });
-        };
-
-        const refreshTradeTypeDropdowns = (trade_type_block, event_group) => {
-            const { contracts_for } = ApiHelpers?.instance ?? {};
-            const top_parent_block = trade_type_block.getTopParent();
-            if (!contracts_for || !top_parent_block) return;
-
-            const market_block = top_parent_block.getChildByType('trade_definition_market');
-            if (!market_block) return;
-
-            const market = market_block.getFieldValue('MARKET_LIST');
-            const submarket = market_block.getFieldValue('SUBMARKET_LIST');
-            const symbol = market_block.getFieldValue('SYMBOL_LIST');
-            const category = trade_type_block.getFieldValue('TRADETYPECAT_LIST');
-            const trade_type = trade_type_block.getFieldValue('TRADETYPE_LIST');
-
-            contracts_for.getTradeTypeCategories(market, submarket, symbol).then(categories => {
-                const category_field = trade_type_block.getField('TRADETYPECAT_LIST');
-                if (!category_field) return;
-
-                const safe_category = getSafeDropdownValue(categories, category);
-                debugDeriv('builder category dropdown', {
-                    market,
-                    submarket,
-                    symbol,
-                    previous: category,
-                    selected: safe_category,
-                    options: categories,
-                });
-                category_field.updateOptions(categories, {
-                    default_value: safe_category,
-                    should_pretend_empty: true,
-                    event_group,
-                });
-
-                contracts_for.getTradeTypes(market, submarket, symbol, safe_category).then(trade_types => {
-                    const trade_type_field = trade_type_block.getField('TRADETYPE_LIST');
-                    if (!trade_type_field) return;
-
-                    const safe_trade_type = getSafeDropdownValue(trade_types, trade_type);
-                    debugDeriv('builder trade type dropdown', {
-                        market,
-                        submarket,
-                        symbol,
-                        category: safe_category,
-                        previous: trade_type,
-                        selected: safe_trade_type,
-                        options: trade_types,
-                    });
-                    trade_type_field.updateOptions(trade_types, {
-                        default_value: safe_trade_type,
-                        should_pretend_empty: true,
-                        event_group,
-                    });
-                    refreshContractTypeDropdown(top_parent_block, safe_trade_type, event_group);
-                });
-            });
-        };
-
         window.Blockly.Blocks.trade_definition_tradetype.onchange = function (event) {
             if (!this.workspace || window.Blockly.derivWorkspace.isFlyoutVisible || this.workspace.isDragging()) {
                 return;
@@ -141,10 +40,6 @@ class DBot {
 
             const { name, type } = event;
 
-            if (type === window.Blockly.Events.BLOCK_CREATE && event.ids.includes(this.id)) {
-                refreshTradeTypeDropdowns(this, event.group);
-            }
-
             if (type === window.Blockly.Events.BLOCK_CHANGE) {
                 const is_symbol_list_change = name === 'SYMBOL_LIST';
                 const is_trade_type_cat_list_change = name === 'TRADETYPECAT_LIST';
@@ -152,7 +47,6 @@ class DBot {
                 if (is_symbol_list_change || is_trade_type_cat_list_change) {
                     const { contracts_for } = ApiHelpers?.instance ?? {};
                     const top_parent_block = this.getTopParent();
-                    if (!top_parent_block) return;
                     const market_block = top_parent_block.getChildByType('trade_definition_market');
                     const market = market_block.getFieldValue('MARKET_LIST');
                     const submarket = market_block.getFieldValue('SUBMARKET_LIST');
@@ -163,7 +57,22 @@ class DBot {
                     if (!is_trade_type_accumulator) forgetAccumulatorsProposalRequest(that);
 
                     if (is_symbol_list_change) {
-                        refreshTradeTypeDropdowns(this, event.group);
+                        contracts_for
+                            ?.getTradeTypeCategories?.(market, submarket, symbol)
+                            .then(categories => {
+                                const category_field = this.getField('TRADETYPECAT_LIST');
+                                if (category_field) {
+                                    category_field.updateOptions(categories, {
+                                        default_value: category,
+                                        should_pretend_empty: true,
+                                        event_group: event.group,
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                // Error getting trade type categories
+                                console.error('Error fetching trade type categories:', error);
+                            });
                         that.symbol = symbol;
                         if (
                             !that.is_bot_running &&
@@ -179,25 +88,22 @@ class DBot {
                             });
                         }
                     } else if (is_trade_type_cat_list_change && event.blockId === this.id) {
-                        contracts_for?.getTradeTypes?.(market, submarket, symbol, category).then(trade_types => {
-                            const trade_type_field = this.getField('TRADETYPE_LIST');
-                            const safe_trade_type = getSafeDropdownValue(trade_types, trade_type);
-                            debugDeriv('builder trade type dropdown', {
-                                market,
-                                submarket,
-                                symbol,
-                                category,
-                                previous: trade_type,
-                                selected: safe_trade_type,
-                                options: trade_types,
+                        contracts_for
+                            ?.getTradeTypes?.(market, submarket, symbol, category)
+                            .then(trade_types => {
+                                const trade_type_field = this.getField('TRADETYPE_LIST');
+                                if (trade_type_field) {
+                                    trade_type_field.updateOptions(trade_types, {
+                                        default_value: trade_type,
+                                        should_pretend_empty: true,
+                                        event_group: event.group,
+                                    });
+                                }
+                            })
+                            .catch(error => {
+                                // Error getting trade types
+                                console.error('Error fetching trade types:', error);
                             });
-                            trade_type_field.updateOptions(trade_types, {
-                                default_value: safe_trade_type,
-                                should_pretend_empty: true,
-                                event_group: event.group,
-                            });
-                            refreshContractTypeDropdown(top_parent_block, safe_trade_type, event.group);
-                        });
                     }
                 }
             }
@@ -244,6 +150,21 @@ class DBot {
                 this.workspace.addChangeListener(event => this.workspace.dispatchBlockEventEffects(event));
                 this.workspace.addChangeListener(event => {
                     if (event.type === 'drag' && !event.isStart && !is_mobile) validateErrorOnBlockDelete();
+
+                    const workspace_change_events = [
+                        window.Blockly.Events.BLOCK_CREATE,
+                        window.Blockly.Events.BLOCK_DELETE,
+                        window.Blockly.Events.BLOCK_MOVE,
+                        window.Blockly.Events.BLOCK_CHANGE,
+                        window.Blockly.Events.VAR_CREATE,
+                        window.Blockly.Events.VAR_DELETE,
+                        window.Blockly.Events.VAR_RENAME,
+                    ];
+
+                    if (workspace_change_events.includes(event.type)) {
+                        this.saveRecentWorkspace();
+                    }
+
                     if (event.type == window.Blockly.Events.BLOCK_CHANGE) {
                         const block = this.workspace.getBlockById(event.blockId);
                         if (is_mobile && block && event.element == 'collapsed') {
@@ -681,12 +602,8 @@ class DBot {
                     const input = block.getInput(input_name);
 
                     if (!input && !block.domToMutation) {
-                        // eslint-disable-next-line no-console
-                        console.warn('Detected a non-existent required input.', {
-                            input_name,
-                            type: block.type,
-                        });
-                    } else if (input.connection) {
+                        // Detected a non-existent required input
+                    } else if (input && input?.connection) {
                         const order = window.Blockly.JavaScript.javascriptGenerator.ORDER_ATOMIC;
                         const value = window.Blockly.JavaScript.javascriptGenerator.valueToCode(
                             block,

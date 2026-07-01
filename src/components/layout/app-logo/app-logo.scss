@@ -1,10 +1,23 @@
 .app-header {
     &__logo {
-        padding-inline-start: 1.2rem;
+        padding-inline-start: 3.2rem;
         padding-inline-end: 2rem;
-        border-inline-end: 1px solid var(--general-section-1);
         height: 32px;
         display: flex;
         align-items: center;
+
+        .brand-logo-text {
+            &-full {
+                @media (max-width: 1024px) {
+                    display: none;
+                }
+            }
+            &-short {
+                display: none;
+                @media (max-width: 1024px) {
+                    display: inline;
+                }
+            }
+        }
     }
 }

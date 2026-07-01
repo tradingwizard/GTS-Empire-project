@@ -3,12 +3,11 @@ import { botNotification } from '@/components/bot-notification/bot-notification'
 import { notification_message } from '@/components/bot-notification/bot-notification-utils';
 import { button_status } from '@/constants/button-status';
 import { config, importExternal } from '@/external/bot-skeleton';
+import { ErrorLogger } from '@/utils/error-logger';
 import { getInitialLanguage, localize } from '@deriv-com/translations';
-import {
-    rudderStackSendUploadStrategyCompletedEvent,
-    rudderStackSendUploadStrategyFailedEvent,
-} from '../analytics/rudderstack-common-events';
-import { getStrategyType } from '../analytics/utils';
+/* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
+/* [/AI] */
+import brandConfig from '@/../brand.config.json';
 import RootStore from './root-store';
 
 export type TErrorWithStatus = Error & { status?: number; result?: { error: { message: string } } };
@@ -64,22 +63,14 @@ export default class GoogleDriveStore {
         this.setKey();
         this.client = null;
         this.access_token = localStorage.getItem('google_access_token') ?? '';
-        // Only bootstrap the Google client when Drive credentials are configured.
-        // Without them, initialiseClient() throws "Missing required parameter
-        // client_id" on every load, and the Drive UI can't work anyway.
-        if (this.is_google_drive_enabled) {
-            setTimeout(() => {
-                importExternal('https://accounts.google.com/gsi/client').then(() => this.initialiseClient());
-                importExternal('https://apis.google.com/js/api.js').then(() => this.initialise());
-            }, 3000);
-        }
+        setTimeout(() => {
+            importExternal('https://accounts.google.com/gsi/client').then(() => this.initialiseClient());
+            importExternal('https://apis.google.com/js/api.js').then(() => this.initialise());
+        }, 3000);
     }
 
     is_google_drive_token_valid = true;
     is_authorised = !!localStorage.getItem('google_access_token');
-    // True only when Drive OAuth credentials are configured (see setKey). When
-    // false, the Drive UI is hidden and the client is never initialised.
-    is_google_drive_enabled = false;
 
     setGoogleDriveTokenValid = (is_google_drive_token_valid: boolean) => {
         this.is_google_drive_token_valid = is_google_drive_token_valid;
@@ -87,12 +78,11 @@ export default class GoogleDriveStore {
 
     setKey = () => {
         const { SCOPE, DISCOVERY_DOCS } = config().GOOGLE_DRIVE;
-        this.client_id = process.env.GD_CLIENT_ID;
-        this.app_id = process.env.GD_APP_ID;
+        this.client_id = process.env.GD_CLIENT_ID || (brandConfig as any).platform?.client_id;
+        this.app_id = process.env.GD_APP_ID || (brandConfig as any).platform?.app_id;
         this.api_key = process.env.GD_API_KEY;
         this.scope = SCOPE;
         this.discovery_docs = DISCOVERY_DOCS;
-        this.is_google_drive_enabled = Boolean(this.client_id && this.app_id && this.api_key);
     };
 
     initialise = () => {
@@ -109,7 +99,11 @@ export default class GoogleDriveStore {
         this.client = google.accounts.oauth2.initTokenClient({
             client_id: this.client_id,
             scope: this.scope,
-            callback: (response: { expires_in?: number; access_token?: string; error?: any }) => {
+            callback: (response: {
+                expires_in?: number;
+                access_token?: string;
+                error?: { error: string; error_description?: string };
+            }) => {
                 if (response?.access_token && !response?.error && response?.expires_in) {
                     this.access_token = response.access_token;
                     this.setIsAuthorized(true);
@@ -218,7 +212,7 @@ export default class GoogleDriveStore {
 
         const xml_doc = await this.createLoadFilePicker(
             'text/xml,application/xml',
-            localize('Select a GTS Empire Strategy')
+            localize('Select a Deriv Bot Strategy')
         );
 
         return xml_doc;
@@ -316,6 +310,15 @@ export default class GoogleDriveStore {
     }
 
     onDriveConnect = async () => {
+        // Prevent crash if user clicks before client initializes (3 second delay)
+        if (!this.client) {
+            ErrorLogger.warn('GoogleDrive', 'Client not initialized yet');
+            botNotification(localize('Google Drive is still loading. Please try again in a moment.'), undefined, {
+                closeButton: true,
+            });
+            return;
+        }
+
         if (this.is_authorised) {
             this.signOut();
         } else {
@@ -328,15 +331,7 @@ export default class GoogleDriveStore {
             const loadPickerCallback = async (data: TPickerCallbackResponse) => {
                 if (data.action === google.picker.Action.PICKED) {
                     const file = data.docs[0];
-                    if (file?.driveError === 'NETWORK') {
-                        rudderStackSendUploadStrategyFailedEvent({
-                            upload_provider: 'google_drive' as any,
-                            upload_id: this.upload_id,
-                            upload_type: 'not_found',
-                            error_message: 'File not found',
-                            error_code: '404',
-                        });
-                    }
+                    // Removed premature error event - network errors should be handled in the actual download attempt below
 
                     const file_name = file.name;
                     const fileId = file.id;
@@ -377,28 +372,21 @@ export default class GoogleDriveStore {
                         }
 
                         resolve({ xml_doc: response.body, file_name });
-                        const upload_type = getStrategyType(response.body);
-                        rudderStackSendUploadStrategyCompletedEvent({
-                            upload_provider: 'google_drive',
-                            upload_type,
-                            upload_id: this.upload_id,
-                        });
-                    } catch (downloadError: any) {
+                        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
+                        /* [/AI] */
+                    } catch (downloadError: unknown) {
                         // Handle specific error cases
-                        let errorMessage = downloadError.message || 'Unknown error occurred';
-                        let errorCode = '500';
+                        const error = downloadError as { message?: string; status?: number };
+                        let errorMessage = error.message || 'Unknown error occurred';
 
-                        if (downloadError.status === 403) {
+                        if (error.status === 403) {
                             errorMessage =
                                 'Access denied. The file may not be accessible with current permissions. Please check file sharing settings or re-authenticate with broader permissions.';
-                            errorCode = '403';
-                        } else if (downloadError.status === 404) {
+                        } else if (error.status === 404) {
                             errorMessage =
                                 'File not found. The file may have been deleted or you may not have permission to access it.';
-                            errorCode = '404';
-                        } else if (downloadError.status === 401) {
+                        } else if (error.status === 401) {
                             errorMessage = 'Authentication failed. Please sign out and sign in again.';
-                            errorCode = '401';
                             // Force sign out on 401 errors
                             this.signOut();
                         }
@@ -406,13 +394,8 @@ export default class GoogleDriveStore {
                         // Add user notification for file load errors
                         botNotification(errorMessage, undefined, { closeButton: true });
 
-                        rudderStackSendUploadStrategyFailedEvent({
-                            upload_provider: 'google_drive' as any,
-                            upload_id: this.upload_id,
-                            upload_type: 'download_failed',
-                            error_message: errorMessage,
-                            error_code: errorCode,
-                        });
+                        /* [AI] - Analytics event tracking removed - see migrate-docs/MONITORING_PACKAGES.md for re-implementation guide */
+                        /* [/AI] */
 
                         // Use reject instead of throw to properly reject the Promise
                         reject(new Error(errorMessage));

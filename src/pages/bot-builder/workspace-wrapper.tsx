@@ -5,6 +5,7 @@ import { useStore } from '@/hooks/useStore';
 import StopBotModal from '../dashboard/stop-bot-modal';
 import Toolbar from './toolbar';
 import Toolbox from './toolbox';
+import BotActionButtons from './bot-action-buttons';
 import './workspace.scss';
 
 const WorkspaceWrapper = observer(() => {
@@ -26,6 +27,7 @@ const WorkspaceWrapper = observer(() => {
                 <Toolbox />
                 <Toolbar />
                 <Flyout />
+                <BotActionButtons />
                 <StopBotModal />
             </React.Fragment>
         );

@@ -2,7 +2,6 @@ import React from 'react';
 import classNames from 'classnames';
 import { observer } from 'mobx-react-lite';
 import Journal from '@/components/journal';
-import SelfExclusion from '@/components/self-exclusion';
 import Button from '@/components/shared_ui/button';
 import Drawer from '@/components/shared_ui/drawer';
 import Modal from '@/components/shared_ui/modal';
@@ -12,13 +11,12 @@ import Text from '@/components/shared_ui/text';
 import Summary from '@/components/summary';
 import TradeAnimation from '@/components/trade-animation';
 import Transactions from '@/components/transactions';
-import { DBOT_TABS } from '@/constants/bot-contents';
 import { popover_zindex } from '@/constants/z-indexes';
-import usePWA from '@/hooks/usePWA';
 import { useStore } from '@/hooks/useStore';
 import { Localize, localize } from '@deriv-com/translations';
 import { useDevice } from '@deriv-com/ui';
 import ThemedScrollbars from '../shared_ui/themed-scrollbars';
+import Disclaimer from '../layout/footer/Disclaimer';
 
 type TStatisticsTile = {
     content: React.ElementType | string;
@@ -144,7 +142,7 @@ const DrawerContent = ({ active_index, is_drawer_open, active_tour, setActiveTab
         return () => {
             document.body.style.overflow = '';
         };
-    }, [is_drawer_open]);
+    }, [is_drawer_open, isDesktop]);
 
     return (
         <>
@@ -182,11 +180,11 @@ const DrawerFooter = ({ is_clear_stat_disabled, onClearStatClick }: TDrawerFoote
 );
 
 const MobileDrawerFooter = () => {
-    const { isPWALaunch, isIOS } = usePWA();
     return (
-        <div className={classNames('controls__section', { 'controls__section--ios-pwa': isIOS && isPWALaunch })}>
+        <div className='controls__section'>
             <div className='controls__buttons'>
                 <TradeAnimation className='controls__animation' should_show_overlay />
+                <Disclaimer isMobile />
             </div>
         </div>
     );
@@ -261,28 +259,28 @@ const RunPanel = observer(() => {
         is_clear_stat_disabled,
         onClearStatClick,
         onMount,
-        onRunButtonClick,
+        onRunButtonClick, // eslint-disable-line @typescript-eslint/no-unused-vars
         onUnmount,
         setActiveTabIndex,
         toggleDrawer,
         toggleStatisticsInfoModal,
     } = run_panel;
     const { statistics } = transactions;
-    const { active_tour, active_tab } = dashboard;
+    const { active_tour } = dashboard;
     const { total_payout, total_profit, total_stake, won_contracts, lost_contracts, number_of_runs } = statistics;
-    const { BOT_BUILDER, CHART } = DBOT_TABS;
 
     React.useEffect(() => {
         onMount();
         return () => onUnmount();
     }, [onMount, onUnmount]);
 
-    React.useEffect(() => {
-        if (!isDesktop) {
-            toggleDrawer(false);
-        }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+   React.useEffect(() => {
+    console.log('📁 Closing summary drawer by default...');
+
+    toggleDrawer(false);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+}, []);
 
     const content = (
         <DrawerContent
@@ -313,12 +311,15 @@ const RunPanel = observer(() => {
         />
     );
 
-    const show_run_panel = [BOT_BUILDER, CHART].includes(active_tab) || active_tour;
-    if ((!show_run_panel && isDesktop) || active_tour === 'bot_builder') return null;
+    if (active_tour === 'bot_builder') return null;
 
     return (
         <>
-            <div className={!isDesktop && is_drawer_open ? 'run-panel__container--mobile' : 'run-panel'}>
+            <div
+                className={classNames('run-panel', {
+                    'run-panel__container--mobile': !isDesktop && is_drawer_open,
+                })}
+            >
                 <Drawer
                     anchor='right'
                     className={classNames('run-panel', {
@@ -337,7 +338,7 @@ const RunPanel = observer(() => {
                 </Drawer>
                 {!isDesktop && <MobileDrawerFooter />}
             </div>
-            <SelfExclusion onRunButtonClick={onRunButtonClick} />
+
             <StatisticsInfoModal
                 is_mobile={!isDesktop}
                 is_statistics_info_modal_open={is_statistics_info_modal_open}

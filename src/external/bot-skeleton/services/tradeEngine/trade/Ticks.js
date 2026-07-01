@@ -1,5 +1,6 @@
 /* eslint-disable no-promise-executor-return */
 import debounce from 'lodash.debounce';
+import { getLocalizedErrorMessage } from '@/constants/backend-error-messages';
 import { localize } from '@deriv-com/translations';
 import { getLast } from '../../../utils/binary-utils';
 import { observer as globalObserver } from '../../../utils/observer';
@@ -25,7 +26,8 @@ export default Engine =>
                     if (this.is_proposal_subscription_required) {
                         this.checkProposalReady();
                     }
-                    const lastTick = ticks.slice(-1)[0];
+                    const lastTick = ticks && ticks.length > 0 ? ticks.slice(-1)[0] : null;
+                    if (!lastTick) return;
                     const { epoch } = lastTick;
                     this.store.dispatch({ type: constants.NEW_TICK, payload: epoch });
                 };
@@ -55,19 +57,27 @@ export default Engine =>
         }
 
         getLastTick(raw, toString = false) {
-            return new Promise(resolve =>
+            return new Promise((resolve, reject) =>
                 this.$scope.ticksService
                     .request({ symbol: this.symbol })
                     .then(ticks => {
-                        let last_tick = raw ? getLast(ticks) : getLast(ticks).quote;
-                        if (!raw && toString) {
-                            last_tick = last_tick.toFixed(this.getPipSize());
+                        try {
+                            let last_tick = raw ? getLast(ticks) : getLast(ticks).quote;
+                            if (!raw && toString) {
+                                last_tick = last_tick.toFixed(this.getPipSize());
+                            }
+                            resolve(last_tick);
+                        } catch (error) {
+                            reject(error);
                         }
-                        resolve(last_tick);
                     })
                     .catch(e => {
                         if (e.code === 'MarketIsClosed') {
-                            globalObserver.emit('Error', e);
+                            const localizedError = {
+                                ...e,
+                                message: getLocalizedErrorMessage(e.code, e.details),
+                            };
+                            globalObserver.emit('Error', localizedError);
                             resolve(e.code);
                         }
                     })
@@ -119,6 +129,8 @@ export default Engine =>
         }
 
         async requestAccumulatorStats() {
+            const isLegacy =
+                typeof localStorage !== 'undefined' && localStorage.getItem('is_legacy_account') === 'true';
             const subscription_id = this.subscription_id_for_accumulators;
             const is_proposal_requested = this.is_proposal_requested_for_accumulators;
             const proposal_request = {
@@ -130,8 +142,12 @@ export default Engine =>
                 growth_rate: this?.tradeOptions?.growth_rate,
                 proposal: 1,
                 subscribe: 1,
-                symbol: this?.tradeOptions?.symbol,
             };
+            if (isLegacy) {
+                proposal_request.symbol = this?.tradeOptions?.symbol;
+            } else {
+                proposal_request.underlying_symbol = this?.tradeOptions?.symbol;
+            }
             if (!subscription_id && !is_proposal_requested) {
                 this.is_proposal_requested_for_accumulators = true;
                 if (proposal_request) {

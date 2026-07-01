@@ -1,0 +1,347 @@
+@use 'components/shared/styles/mixins' as *;
+
+$bg: #09090b;
+$surface: rgba(15, 15, 19, 0.88);
+$surface-soft: rgba(255, 255, 255, 0.04);
+$border: rgba(255, 255, 255, 0.08);
+$border-strong: rgba(255, 255, 255, 0.14);
+$accent: #e5323b;
+$text: #f4f4f5;
+$muted: #71717a;
+$subtle: #a1a1aa;
+
+.campaigns-page {
+    position: relative;
+    min-height: 100%;
+    padding: 2.4rem;
+    display: grid;
+    grid-template-columns: minmax(26rem, 34rem) minmax(0, 1fr);
+    gap: 2rem;
+    overflow: hidden;
+    background: $bg;
+    color: $text;
+}
+
+.campaigns-page__grid {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+        linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: radial-gradient(circle at top right, black 0%, transparent 72%);
+}
+
+.campaigns-page__glow {
+    position: absolute;
+    right: -14rem;
+    top: -16rem;
+    width: 42rem;
+    height: 42rem;
+    pointer-events: none;
+    background: radial-gradient(circle, rgba(229, 50, 59, 0.22), transparent 68%);
+}
+
+.campaigns-sidebar,
+.campaigns-main {
+    position: relative;
+    z-index: 1;
+}
+
+.campaigns-sidebar {
+    min-height: calc(100vh - 4.8rem);
+    padding: 2.4rem;
+    border: 1px solid $border;
+    border-radius: 2.4rem;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.055), transparent),
+        $surface;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 2.4rem 8rem rgba(0, 0, 0, 0.32);
+
+    h1 {
+        margin: 1.4rem 0 1.4rem;
+        font-size: clamp(3.4rem, 4vw, 5.8rem);
+        line-height: 0.95;
+        letter-spacing: -0.07em;
+        font-weight: 850;
+    }
+
+    p {
+        margin: 0;
+        color: $subtle;
+        font-size: 1.45rem;
+        line-height: 1.7;
+    }
+}
+
+.campaigns-sidebar__eyebrow {
+    color: $accent;
+    font-size: 1.1rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.campaigns-socials {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    padding-top: 2rem;
+}
+
+.campaigns-socials__item {
+    width: 4.2rem;
+    height: 4.2rem;
+    border: 1px solid $border;
+    border-radius: 1.4rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: $text;
+    background: $surface-soft;
+    transition: 0.2s ease;
+
+    &:hover {
+        transform: translateY(-0.2rem);
+        border-color: $border-strong;
+        background: rgba(255, 255, 255, 0.075);
+    }
+
+    &--whatsapp:hover {
+        color: #22c55e;
+    }
+
+    &--telegram:hover {
+        color: #38bdf8;
+    }
+
+    &--youtube:hover,
+    &--tiktok:hover,
+    &--instagram:hover {
+        color: $accent;
+    }
+}
+
+.campaigns-main {
+    min-width: 0;
+}
+
+.campaigns-nav {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    margin-bottom: 1.6rem;
+    padding: 0.6rem;
+    border: 1px solid $border;
+    border-radius: 999px;
+    background: rgba(9, 9, 11, 0.82);
+    backdrop-filter: blur(18px);
+    display: inline-flex;
+    gap: 0.6rem;
+}
+
+.campaigns-nav__btn {
+    height: 4rem;
+    padding: 0 1.8rem;
+    border: 0;
+    border-radius: 999px;
+    background: transparent;
+    color: $muted;
+    font-size: 1.15rem;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: 0.2s ease;
+
+    &:hover {
+        color: $text;
+        background: rgba(255, 255, 255, 0.04);
+    }
+
+    &--active {
+        color: #fff;
+        background: $accent;
+        box-shadow: 0 1rem 3rem rgba(229, 50, 59, 0.24);
+    }
+}
+
+.quick-guide-content {
+    display: grid;
+    gap: 1.6rem;
+}
+
+.guide-card {
+    display: grid;
+    grid-template-columns: minmax(24rem, 0.82fr) minmax(0, 1fr);
+    min-height: 34rem;
+    border: 1px solid $border;
+    border-radius: 2.4rem;
+    overflow: hidden;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent),
+        $surface;
+    box-shadow: 0 2rem 7rem rgba(0, 0, 0, 0.28);
+    transition: 0.22s ease;
+
+    &:hover {
+        transform: translateY(-0.3rem);
+        border-color: $border-strong;
+    }
+}
+
+.guide-card__media {
+    min-height: 100%;
+    background: #000;
+    overflow: hidden;
+
+    img {
+        width: 100%;
+        height: 100%;
+        min-height: 34rem;
+        display: block;
+        object-fit: cover;
+        filter: saturate(0.92) contrast(1.05);
+        transition: 0.45s ease;
+    }
+
+    .guide-card:hover & img {
+        transform: scale(1.035);
+    }
+}
+
+.guide-card__content {
+    padding: 3rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+
+    h2 {
+        max-width: 62rem;
+        margin: 1.2rem 0 1.4rem;
+        font-size: clamp(2.8rem, 3.3vw, 5rem);
+        line-height: 0.98;
+        letter-spacing: -0.065em;
+        font-weight: 850;
+    }
+
+    p {
+        max-width: 54rem;
+        margin: 0;
+        color: $subtle;
+        font-size: 1.45rem;
+        line-height: 1.75;
+    }
+}
+
+.guide-card__badge {
+    width: fit-content;
+    padding: 0.55rem 1rem;
+    border: 1px solid rgba(229, 50, 59, 0.35);
+    border-radius: 999px;
+    color: $accent;
+    background: rgba(229, 50, 59, 0.08);
+    font-size: 1.05rem;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.guide-card__actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-top: 2.4rem;
+}
+
+.guide-card__btn {
+    height: 4.4rem;
+    padding: 0 1.8rem;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    font-size: 1.15rem;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    transition: 0.2s ease;
+
+    &:hover {
+        transform: translateY(-0.2rem);
+    }
+
+    &--primary {
+        color: #fff;
+        border: 1px solid rgba(229, 50, 59, 0.72);
+        background: $accent;
+        box-shadow: 0 1.2rem 3rem rgba(229, 50, 59, 0.24);
+
+        &:hover {
+            background: lighten($accent, 5%);
+        }
+    }
+
+    &--secondary {
+        color: $text;
+        border: 1px solid $border-strong;
+        background: rgba(255, 255, 255, 0.045);
+
+        &:hover {
+            border-color: rgba(255, 255, 255, 0.24);
+            background: rgba(255, 255, 255, 0.075);
+        }
+    }
+}
+
+@media (max-width: 1100px) {
+    .campaigns-page {
+        grid-template-columns: 1fr;
+    }
+
+    .campaigns-sidebar {
+        min-height: auto;
+        gap: 2.4rem;
+    }
+}
+
+@media (max-width: 760px) {
+    .campaigns-page {
+        padding: 1.2rem;
+    }
+
+    .campaigns-sidebar,
+    .guide-card {
+        border-radius: 1.8rem;
+    }
+
+    .guide-card {
+        grid-template-columns: 1fr;
+    }
+
+    .guide-card__media img {
+        min-height: 22rem;
+    }
+
+    .guide-card__content {
+        padding: 2rem;
+    }
+
+    .campaigns-nav {
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .campaigns-nav__btn {
+        padding: 0 1rem;
+        font-size: 1rem;
+    }
+
+    .guide-card__btn {
+        width: 100%;
+    }
+}
